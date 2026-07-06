@@ -81,7 +81,7 @@ export function Sidebar({ className = "", onNavigate }: SidebarProps) {
   return (
     <div className={`flex h-full flex-col bg-sidebar text-sidebar-ink ${className}`}>
       <div className="p-4">
-        <div className="rounded-md border border-white/10 py-2 text-center text-sm font-bold tracking-wide">
+        <div className="rounded-none border border-white/10 py-2 text-center text-sm font-bold tracking-wide">
           TENDER-CMS
         </div>
       </div>
@@ -95,7 +95,7 @@ export function Sidebar({ className = "", onNavigate }: SidebarProps) {
                 key={group.label}
                 href={group.href ?? "#"}
                 onClick={onNavigate}
-                className={`block rounded-md px-3 py-2 font-semibold transition-colors ${
+                className={`block rounded-none px-3 py-2 font-semibold transition-colors ${
                   isActive
                     ? "bg-active text-active-ink"
                     : "text-sidebar-ink/90 hover:bg-white/5"
@@ -114,7 +114,7 @@ export function Sidebar({ className = "", onNavigate }: SidebarProps) {
                 type="button"
                 onClick={() => toggleGroup(group.label)}
                 aria-expanded={isOpen}
-                className="flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold text-sidebar-ink/90 hover:bg-white/5"
+                className="flex w-full items-center justify-between gap-2 rounded-none px-3 py-2 font-semibold text-sidebar-ink/90 hover:bg-white/5"
               >
                 {group.label}
                 <ChevronDown
@@ -140,7 +140,7 @@ export function Sidebar({ className = "", onNavigate }: SidebarProps) {
                           key={link.href}
                           href={link.href}
                           onClick={onNavigate}
-                          className={`block rounded-md px-2 py-1 ${
+                          className={`block rounded-none px-2 py-1 ${
                             isActive
                               ? "bg-sidebar-active font-medium text-sidebar-active-ink"
                               : "text-sidebar-muted hover:text-sidebar-ink"
@@ -159,7 +159,7 @@ export function Sidebar({ className = "", onNavigate }: SidebarProps) {
       </nav>
 
       <div className="flex items-center gap-2 border-t border-white/10 p-4">
-        <div className="h-8 w-8 rounded-full bg-white/10" />
+        <div className="h-8 w-8 rounded-none bg-white/10" />
         <div className="text-sm">
           <p className="font-semibold">Nimal</p>
           <p className="text-xs text-sidebar-muted">Admin</p>

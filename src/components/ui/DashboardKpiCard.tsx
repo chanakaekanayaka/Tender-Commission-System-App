@@ -11,16 +11,16 @@ export function DashboardKpiCard({
   progressPercent,
 }: KpiCardData) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-none border border-border bg-card p-4">
       <p className="text-xs font-semibold tracking-wide text-muted uppercase">
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold text-ink">{value}</p>
 
       {typeof progressPercent === "number" && (
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-border">
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-none bg-border">
           <div
-            className="h-full rounded-full bg-active"
+            className="h-full rounded-none bg-active"
             style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
           />
         </div>

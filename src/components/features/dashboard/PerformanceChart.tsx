@@ -25,11 +25,11 @@ export function PerformanceChart({ data, highlightMonth }: PerformanceChartProps
   const chartWidth = data.length * COLUMN;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-none border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-semibold text-ink">Month-by-Month Company Performance</h2>
 
-        <div className="inline-flex overflow-hidden rounded-md border border-border text-xs font-medium">
+        <div className="inline-flex overflow-hidden rounded-none border border-border text-xs font-medium">
           <button
             type="button"
             onClick={() => setShowSales((v) => !v)}
@@ -112,7 +112,7 @@ export function PerformanceChart({ data, highlightMonth }: PerformanceChartProps
                   >
                     <div
                       title={formatLKR(d.sales)}
-                      className={`w-full rounded-t transition-[height] ${
+                      className={`w-full rounded-none transition-[height] ${
                         isHighlight ? "bg-active" : "bg-border"
                       }`}
                       style={{ height: `${heightPercent}%` }}

@@ -76,3 +76,4 @@ The UI uses a neutral, unified "Light-Dark" palette — no blue, no brand color.
 - **Light theme only. The app does not support dark mode. Never add `dark:` variants.** `globals.css` has no `@media (prefers-color-scheme: dark)` override — if a new semantic color is needed, add a single light-mode value to the token set in `globals.css`.
 - Any new component must be built from these tokens from the start, not retrofitted later.
 - **Reminder:** Strictly use semantic design tokens from `globals.css` for all UI chrome. No hardcoded brand colors allowed.
+- **Sharp edges only.** All UI components must use `rounded-none` or `rounded-sm`. No rounded/pill-shaped components allowed — this includes badges, buttons, inputs, selects, cards, and containers.

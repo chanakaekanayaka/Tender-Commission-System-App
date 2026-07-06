@@ -12,11 +12,11 @@ export function AdminShell({ children }: AdminShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen md:grid md:grid-cols-[220px_1fr]">
-      {/* Desktop sidebar — fixed column */}
-      <Sidebar className="hidden md:flex" />
+    <div>
+      {/* Desktop sidebar — fixed position, full viewport height, doesn't scroll with content */}
+      <Sidebar className="fixed inset-y-0 left-0 hidden h-screen w-[220px] md:flex" />
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer — already an independent fixed overlay, unaffected by the desktop layout */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <button
@@ -28,7 +28,7 @@ export function AdminShell({ children }: AdminShellProps) {
             <button
               aria-label="Close navigation"
               onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-3 rounded-md p-1 text-sidebar-ink hover:bg-white/10"
+              className="absolute top-4 right-3 rounded-none p-1 text-sidebar-ink hover:bg-white/10"
             >
               <X className="h-5 w-5" />
             </button>
@@ -37,12 +37,14 @@ export function AdminShell({ children }: AdminShellProps) {
         </div>
       )}
 
-      <div className="flex min-h-screen flex-col">
+      {/* Content column — offset past the fixed sidebar's width on desktop, and
+          scrolls independently of it (the sidebar is never inside this container) */}
+      <div className="flex h-screen flex-col overflow-y-auto bg-surface md:ml-[220px]">
         <header className="flex items-center gap-3 border-b border-border bg-card p-4 text-ink md:hidden">
           <button
             aria-label="Open navigation"
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1 hover:bg-border/50"
+            className="rounded-none p-1 hover:bg-border/50"
           >
             <Menu className="h-5 w-5" />
           </button>
