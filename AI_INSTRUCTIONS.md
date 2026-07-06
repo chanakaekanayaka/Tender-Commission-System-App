@@ -57,3 +57,22 @@ Before generating code for any new feature or module:
 1. Review these instructions to ensure architectural alignment.
 2. Confirm understanding of the specific mathematical or role-based constraints related to the module.
 3. Provide code that is production-ready, fully typed, and styled with Tailwind.
+
+## 7. Design System & Color Guidelines (CRITICAL)
+The UI uses a neutral, unified "Light-Dark" palette — no blue, no brand color. All tokens are defined once in `src/app/globals.css` (CSS variables in `:root`, mapped into Tailwind via `@theme inline`) and consumed everywhere as Tailwind utilities.
+
+### Tokens (Tailwind utility → meaning)
+- `bg-surface` — page background
+- `bg-card` / `border-border` — card surfaces and dividers
+- `text-ink` / `text-muted` — primary / secondary text
+- `bg-sidebar` / `text-sidebar-ink` / `text-sidebar-muted` — sidebar surface (always dark, in both light and dark mode)
+- `bg-active` / `text-active-ink` — the neutral "selected/emphasis" state (near-black on light surfaces, inverted near-white in dark mode). This replaces what used to be a blue accent.
+- `bg-sidebar-active` / `text-sidebar-active-ink` — the subtle translucent-white pill used for the active item inside the (always-dark) sidebar. Do not reuse `bg-active` inside the sidebar — it won't contrast against the dark sidebar background.
+
+### Rules
+- **Never hardcode colors.** No raw hex, no `blue-*`/`gray-*`/`slate-*` Tailwind color utilities for UI chrome (backgrounds, text, borders, active/hover states, buttons, icons). Always use the tokens above.
+- **Links** are indicated by an underline, not by color — use `underline` + inherited text color, not a colored `text-*` class.
+- **Data visualization is the one exception.** Chart series (e.g., a secondary line/bar distinct from the primary one) may use a small, deliberate non-neutral color (e.g., amber) purely to distinguish series — this is not "UI chrome" and isn't covered by the no-color rule above.
+- **Light theme only. The app does not support dark mode. Never add `dark:` variants.** `globals.css` has no `@media (prefers-color-scheme: dark)` override — if a new semantic color is needed, add a single light-mode value to the token set in `globals.css`.
+- Any new component must be built from these tokens from the start, not retrofitted later.
+- **Reminder:** Strictly use semantic design tokens from `globals.css` for all UI chrome. No hardcoded brand colors allowed.

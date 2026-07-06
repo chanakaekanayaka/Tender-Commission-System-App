@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@layer base {
+  :root {
+    /* Light theme only — no dark mode. */
+    --bg-surface: #ffffff;
+    --bg-card: #f9fafb;
+    --border-border: #e5e7eb;
+    --text-ink: #111827;
+    --text-muted: #6b7280;
+
+    /* Sidebar (always dark, independent of the light content area) */
+    --bg-sidebar: #111827;
+    --text-sidebar-ink: #f9fafb;
+    --text-sidebar-muted: #9ca3af;
+    --bg-sidebar-active: rgba(255, 255, 255, 0.1);
+    --text-sidebar-active-ink: #ffffff;
+
+    /* Neutral Active State (Replaces Blue) */
+    --bg-active: #111827;
+    --text-active-ink: #ffffff;
+  }
 }
 
+/* Registers the tokens above as real Tailwind utilities (bg-surface, text-ink, ...).
+   "@layer base" custom properties alone are just CSS variables — Tailwind only
+   generates color utilities (bg-*, text-*, border-*) from names declared in @theme.
+   This project uses Tailwind v4's CSS-first config, so this @theme inline block
+   IS the "Tailwind config" — there is no tailwind.config.ts. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-surface: var(--bg-surface);
+  --color-card: var(--bg-card);
+  --color-border: var(--border-border);
+  --color-ink: var(--text-ink);
+  --color-muted: var(--text-muted);
+
+  --color-sidebar: var(--bg-sidebar);
+  --color-sidebar-ink: var(--text-sidebar-ink);
+  --color-sidebar-muted: var(--text-sidebar-muted);
+  --color-sidebar-active: var(--bg-sidebar-active);
+  --color-sidebar-active-ink: var(--text-sidebar-active-ink);
+
+  --color-active: var(--bg-active);
+  --color-active-ink: var(--text-active-ink);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-surface);
+  color: var(--text-ink);
   font-family: Arial, Helvetica, sans-serif;
 }
