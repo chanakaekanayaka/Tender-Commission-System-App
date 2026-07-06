@@ -18,3 +18,13 @@ export interface MonthlyPerformance {
   sales: number;
   target: number;
 }
+
+export interface StaffMonthlyPerformance {
+  month: string;
+  amount: number;
+}
+
+export interface PendingOrderRow {
+  id: string;
+  jobNumber: string;
+}

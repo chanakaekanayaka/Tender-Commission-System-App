@@ -52,3 +52,13 @@ body {
   color: var(--text-ink);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Keeps scroll behavior (e.g. an overflowing sidebar) without the browser's default scrollbar chrome. */
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
+}
