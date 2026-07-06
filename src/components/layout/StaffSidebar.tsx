@@ -1,47 +1,49 @@
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { SidebarGroup } from "@/components/layout/SidebarGroup";
 import { SidebarItem } from "@/components/layout/SidebarItem";
+import type { TranslationKey } from "@/lib/i18n/locales";
 
 interface SidebarLink {
-  label: string;
+  labelKey: TranslationKey;
   href: string;
 }
 
 interface SidebarGroupConfig {
-  label: string;
+  labelKey: TranslationKey;
   href?: string;
   children?: SidebarLink[];
 }
 
 const NAV_GROUPS: SidebarGroupConfig[] = [
-  { label: "Dashboard", href: "/staff/dashboard" },
+  { labelKey: "sidebar.dashboard", href: "/staff/dashboard" },
   {
-    label: "Price Schedules",
+    labelKey: "sidebar.priceSchedules",
     children: [
-      { label: "Create", href: "/staff/tenders/create" },
-      { label: "History", href: "/staff/tenders/history" },
+      { labelKey: "sidebar.create", href: "/staff/tenders/create" },
+      { labelKey: "sidebar.history", href: "/staff/tenders/history" },
     ],
   },
   {
-    label: "Job Orders",
+    labelKey: "sidebar.jobOrders",
     children: [
-      { label: "Create", href: "/staff/job-orders/create" },
-      { label: "Active", href: "/staff/job-orders/active" },
-      { label: "Pending", href: "/staff/job-orders/pending" },
-      { label: "History", href: "/staff/job-orders/history" },
+      { labelKey: "sidebar.create", href: "/staff/job-orders/create" },
+      { labelKey: "sidebar.active", href: "/staff/job-orders/active" },
+      { labelKey: "sidebar.pending", href: "/staff/job-orders/pending" },
+      { labelKey: "sidebar.history", href: "/staff/job-orders/history" },
     ],
   },
   {
-    label: "Commissions",
+    labelKey: "sidebar.commissions",
     children: [
-      { label: "Pending", href: "/staff/commissions/pending" },
-      { label: "History", href: "/staff/commissions/history" },
+      { labelKey: "sidebar.pending", href: "/staff/commissions/pending" },
+      { labelKey: "sidebar.history", href: "/staff/commissions/history" },
     ],
   },
   {
-    label: "Other Expenses",
+    labelKey: "sidebar.otherExpenses",
     children: [
-      { label: "Create", href: "/staff/expenses/create" },
-      { label: "History", href: "/staff/expenses/history" },
+      { labelKey: "sidebar.create", href: "/staff/expenses/create" },
+      { labelKey: "sidebar.history", href: "/staff/expenses/history" },
     ],
   },
 ];
@@ -52,8 +54,8 @@ interface StaffSidebarProps {
 
 /**
  * Server Component — no "use client" here. The only interactive pieces
- * (active-link highlighting, closing the mobile drawer on navigate) live in
- * SidebarItem, which is the sole Client Component in this tree.
+ * (active-link highlighting, closing the mobile drawer on navigate, and
+ * translation lookup) live in SidebarItem/SidebarAccordion/LanguageSwitcher.
  */
 export function StaffSidebar({ className = "" }: StaffSidebarProps) {
   return (
@@ -67,12 +69,21 @@ export function StaffSidebar({ className = "" }: StaffSidebarProps) {
       <nav className="hide-scrollbar flex-1 space-y-1 overflow-y-auto px-3 pb-4 text-sm">
         {NAV_GROUPS.map((group) =>
           group.children ? (
-            <SidebarGroup key={group.label} label={group.label} items={group.children} />
+            <SidebarGroup key={group.labelKey} labelKey={group.labelKey} items={group.children} />
           ) : (
-            <SidebarItem key={group.label} href={group.href ?? "#"} label={group.label} variant="top" />
+            <SidebarItem
+              key={group.labelKey}
+              href={group.href ?? "#"}
+              labelKey={group.labelKey}
+              variant="top"
+            />
           ),
         )}
       </nav>
+
+      <div className="border-t border-white/10 p-3">
+        <LanguageSwitcher />
+      </div>
     </div>
   );
 }

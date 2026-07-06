@@ -2,6 +2,7 @@
 
 import { Eye, Pencil, Search } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import type { PriceScheduleSummary } from "@/shared/types/tender.types";
 
@@ -10,6 +11,7 @@ interface PriceScheduleHistoryTableProps {
 }
 
 export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTableProps) {
+  const { t } = useTranslation();
   // Only the search box needs client state — the table itself would be static
   // markup if not for filtering it reactively against that input.
   const [query, setQuery] = useState("");
@@ -33,7 +35,7 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by Procurement No or Entity"
+          placeholder={t("priceScheduleHistory.searchPlaceholder")}
           className="w-full rounded-none border border-border bg-surface py-2 pr-3 pl-8 text-sm text-ink placeholder:text-muted"
         />
       </div>
@@ -43,12 +45,12 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted uppercase">
-              <th className="py-2 pr-3 font-semibold">Procurement No</th>
-              <th className="px-3 py-2 font-semibold">Entity</th>
-              <th className="px-3 py-2 font-semibold">Closing Date</th>
-              <th className="px-3 py-2 font-semibold">Total Value</th>
-              <th className="px-3 py-2 font-semibold">Status</th>
-              <th className="py-2 pl-3 font-semibold">Actions</th>
+              <th className="py-2 pr-3 font-semibold">{t("common.procurementNo")}</th>
+              <th className="px-3 py-2 font-semibold">{t("common.procuringEntity")}</th>
+              <th className="px-3 py-2 font-semibold">{t("common.closingDate")}</th>
+              <th className="px-3 py-2 font-semibold">{t("common.totalValue")}</th>
+              <th className="px-3 py-2 font-semibold">{t("common.status")}</th>
+              <th className="py-2 pl-3 font-semibold">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -66,15 +68,15 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
                         : "border border-border text-muted"
                     }`}
                   >
-                    {row.status}
+                    {row.status === "Completed" ? t("status.completed") : t("status.draft")}
                   </span>
                 </td>
                 <td className="py-2 pl-3">
                   <div className="flex items-center gap-2 text-muted">
-                    <button type="button" aria-label="View" className="hover:text-ink">
+                    <button type="button" aria-label={t("common.view")} className="hover:text-ink">
                       <Eye className="h-4 w-4" aria-hidden />
                     </button>
-                    <button type="button" aria-label="Edit" className="hover:text-ink">
+                    <button type="button" aria-label={t("common.edit")} className="hover:text-ink">
                       <Pencil className="h-4 w-4" aria-hidden />
                     </button>
                   </div>
@@ -85,7 +87,7 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="py-6 text-center text-muted">
-                  No price schedules match &ldquo;{query}&rdquo;.
+                  {t("priceScheduleHistory.noResults", { query })}
                 </td>
               </tr>
             )}

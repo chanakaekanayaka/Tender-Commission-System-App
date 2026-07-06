@@ -2,6 +2,7 @@
 
 import { Check, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { useTranslation } from "@/context/LanguageContext";
 
 interface UploadButtonProps {
   jobNumber: string;
@@ -9,6 +10,7 @@ interface UploadButtonProps {
 
 /** Client Component — the only interactive piece of a pending-order row (file picker + local "uploaded" state). */
 export function UploadButton({ jobNumber }: UploadButtonProps) {
+  const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export function UploadButton({ jobNumber }: UploadButtonProps) {
         }`}
       >
         {fileName ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Upload className="h-3.5 w-3.5" aria-hidden />}
-        {fileName ? "Uploaded" : "Upload"}
+        {fileName ? t("dashboard.uploaded") : t("dashboard.upload")}
       </button>
     </>
   );

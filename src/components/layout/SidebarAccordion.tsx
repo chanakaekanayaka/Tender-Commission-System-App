@@ -3,9 +3,11 @@
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "@/context/LanguageContext";
+import type { TranslationKey } from "@/lib/i18n/locales";
 
 interface SidebarAccordionProps {
-  label: string;
+  labelKey: TranslationKey;
   /** hrefs of the items rendered in `children`, used to auto-open and highlight this group when one of them is active. */
   childHrefs: string[];
   children: ReactNode;
@@ -16,8 +18,9 @@ interface SidebarAccordionProps {
  * (expanded/collapsed). SidebarGroup (Server Component) passes the already
  * server-rendered child links in as `children`.
  */
-export function SidebarAccordion({ label, childHrefs, children }: SidebarAccordionProps) {
+export function SidebarAccordion({ labelKey, childHrefs, children }: SidebarAccordionProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
   const hasActiveChild = childHrefs.includes(pathname);
 
   // Collapsed by default, except when the active route lives in this group.
@@ -33,7 +36,7 @@ export function SidebarAccordion({ label, childHrefs, children }: SidebarAccordi
           hasActiveChild ? "bg-white/5 text-sidebar-ink" : "text-sidebar-ink/90 hover:bg-white/5"
         }`}
       >
-        {label}
+        {t(labelKey)}
         <ChevronDown
           className={`h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
           aria-hidden

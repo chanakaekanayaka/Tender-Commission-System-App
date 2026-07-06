@@ -1,54 +1,55 @@
 import { SidebarGroup } from "@/components/layout/SidebarGroup";
 import { SidebarItem } from "@/components/layout/SidebarItem";
+import type { TranslationKey } from "@/lib/i18n/locales";
 
 interface SidebarLink {
-  label: string;
+  labelKey: TranslationKey;
   href: string;
 }
 
 interface SidebarGroupConfig {
-  label: string;
+  labelKey: TranslationKey;
   href?: string;
   children?: SidebarLink[];
 }
 
 const NAV_GROUPS: SidebarGroupConfig[] = [
-  { label: "Dashboard", href: "/admin/dashboard" },
+  { labelKey: "sidebar.dashboard", href: "/admin/dashboard" },
   {
-    label: "Price Schedules",
+    labelKey: "sidebar.priceSchedules",
     children: [
-      { label: "Create", href: "/admin/tenders/create" },
-      { label: "History", href: "/admin/tenders/history" },
+      { labelKey: "sidebar.create", href: "/admin/tenders/create" },
+      { labelKey: "sidebar.history", href: "/admin/tenders/history" },
     ],
   },
   {
-    label: "Job Orders",
+    labelKey: "sidebar.jobOrders",
     children: [
-      { label: "Create", href: "/admin/job-orders/create" },
-      { label: "Active", href: "/admin/job-orders/active" },
-      { label: "Pending", href: "/admin/job-orders/pending" },
-      { label: "History", href: "/admin/job-orders/history" },
+      { labelKey: "sidebar.create", href: "/admin/job-orders/create" },
+      { labelKey: "sidebar.active", href: "/admin/job-orders/active" },
+      { labelKey: "sidebar.pending", href: "/admin/job-orders/pending" },
+      { labelKey: "sidebar.history", href: "/admin/job-orders/history" },
     ],
   },
   {
-    label: "Commissions",
+    labelKey: "sidebar.commissions",
     children: [
-      { label: "Pending", href: "/admin/commissions/pending" },
-      { label: "History", href: "/admin/commissions/history" },
+      { labelKey: "sidebar.pending", href: "/admin/commissions/pending" },
+      { labelKey: "sidebar.history", href: "/admin/commissions/history" },
     ],
   },
   {
-    label: "Other Expenses",
+    labelKey: "sidebar.otherExpenses",
     children: [
-      { label: "Create", href: "/admin/expenses/create" },
-      { label: "History", href: "/admin/expenses/history" },
+      { labelKey: "sidebar.create", href: "/admin/expenses/create" },
+      { labelKey: "sidebar.history", href: "/admin/expenses/history" },
     ],
   },
   {
-    label: "System Configs",
+    labelKey: "sidebar.systemConfigs",
     children: [
-      { label: "Users · Create", href: "/admin/users/create" },
-      { label: "Users · List", href: "/admin/users" },
+      { labelKey: "sidebar.usersCreate", href: "/admin/users/create" },
+      { labelKey: "sidebar.usersList", href: "/admin/users" },
     ],
   },
 ];
@@ -59,8 +60,8 @@ interface AdminSidebarProps {
 
 /**
  * Server Component — no "use client" here. The only interactive pieces
- * (active-link highlighting, closing the mobile drawer on navigate) live in
- * SidebarItem, which is the sole Client Component in this tree.
+ * (active-link highlighting, closing the mobile drawer on navigate, and
+ * translation lookup) live in SidebarItem/SidebarAccordion.
  */
 export function AdminSidebar({ className = "" }: AdminSidebarProps) {
   return (
@@ -74,9 +75,14 @@ export function AdminSidebar({ className = "" }: AdminSidebarProps) {
       <nav className="hide-scrollbar flex-1 space-y-1 overflow-y-auto px-3 pb-4 text-sm">
         {NAV_GROUPS.map((group) =>
           group.children ? (
-            <SidebarGroup key={group.label} label={group.label} items={group.children} />
+            <SidebarGroup key={group.labelKey} labelKey={group.labelKey} items={group.children} />
           ) : (
-            <SidebarItem key={group.label} href={group.href ?? "#"} label={group.label} variant="top" />
+            <SidebarItem
+              key={group.labelKey}
+              href={group.href ?? "#"}
+              labelKey={group.labelKey}
+              variant="top"
+            />
           ),
         )}
       </nav>

@@ -1,11 +1,13 @@
 import { Pencil } from "lucide-react";
 import type { ReactNode } from "react";
+import { T } from "@/components/features/i18n/T";
 
 // Server Component — these are plain uncontrolled inputs, so no client-side
-// state or handlers are needed just to render and type into them.
+// state or handlers are needed just to render and type into them. Field
+// labels go through <T/> (the sole client leaf) so this stays server-rendered.
 
 interface FieldProps {
-  label: string;
+  label: ReactNode;
   defaultValue: string;
   required?: boolean;
   editable?: boolean;
@@ -21,7 +23,6 @@ function Field({ label, defaultValue, required, editable = true }: FieldProps) {
       <span className="relative mt-1 block">
         <input
           type="text"
-          name={label}
           defaultValue={defaultValue}
           readOnly={!editable}
           className={`w-full rounded-none border border-border bg-surface px-3 py-2 pr-8 text-ink ${
@@ -47,21 +48,25 @@ export function PriceScheduleMetadataForm() {
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
-        Metadata (auto-filled by AI · editable)
+        <T k="metadataForm.heading" />
       </p>
 
       <div className="space-y-4">
         <Row>
-          <Field label="Procurement No" defaultValue="PROC/2026/0148" required />
-          <Field label="Procuring Entity" defaultValue="Ministry of Health" />
+          <Field label={<T k="common.procurementNo" />} defaultValue="PROC/2026/0148" required />
+          <Field label={<T k="common.procuringEntity" />} defaultValue="Ministry of Health" />
         </Row>
         <Row>
-          <Field label="Closing Date" defaultValue="2026-07-21" />
-          <Field label="Delivery Period" defaultValue="45 days" />
+          <Field label={<T k="common.closingDate" />} defaultValue="2026-07-21" />
+          <Field label={<T k="metadataForm.deliveryPeriod" />} defaultValue="45 days" />
         </Row>
         <Row>
-          <Field label="Bid Validity" defaultValue="90 days" />
-          <Field label="VAT Mode" defaultValue="15% — from System Config" editable={false} />
+          <Field label={<T k="metadataForm.bidValidity" />} defaultValue="90 days" />
+          <Field
+            label={<T k="metadataForm.vatMode" />}
+            defaultValue="15% — from System Config"
+            editable={false}
+          />
         </Row>
       </div>
     </div>

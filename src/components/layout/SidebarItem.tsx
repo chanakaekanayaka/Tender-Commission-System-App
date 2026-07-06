@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCloseMobileNav } from "@/components/layout/mobile-nav-context";
+import { useTranslation } from "@/context/LanguageContext";
+import type { TranslationKey } from "@/lib/i18n/locales";
 
 interface SidebarItemProps {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   /** "top" for a standalone top-level link (e.g. Dashboard), "child" for a link nested under a group. */
   variant?: "top" | "child";
 }
@@ -24,9 +26,10 @@ const VARIANT_CLASSES = {
   },
 } as const;
 
-export function SidebarItem({ href, label, variant = "child" }: SidebarItemProps) {
+export function SidebarItem({ href, labelKey, variant = "child" }: SidebarItemProps) {
   const pathname = usePathname();
   const closeMobileNav = useCloseMobileNav();
+  const { t } = useTranslation();
   const isActive = pathname === href;
   const classes = VARIANT_CLASSES[variant];
 
@@ -36,7 +39,7 @@ export function SidebarItem({ href, label, variant = "child" }: SidebarItemProps
       onClick={closeMobileNav}
       className={`${classes.base} ${isActive ? classes.active : classes.inactive}`}
     >
-      {label}
+      {t(labelKey)}
     </Link>
   );
 }

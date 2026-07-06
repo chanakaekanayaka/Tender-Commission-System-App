@@ -2,10 +2,12 @@
 
 import { CheckCircle2, Loader2, UploadCloud } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
+import { useTranslation } from "@/context/LanguageContext";
 
 type Status = "idle" | "dragging" | "extracting" | "done";
 
 export function DocumentDropzone() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>("idle");
   const [fileName, setFileName] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -56,7 +58,7 @@ export function DocumentDropzone() {
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
-        Source Document
+        {t("dropzone.sourceDocument")}
       </p>
 
       <div
@@ -80,7 +82,7 @@ export function DocumentDropzone() {
           <>
             <Loader2 className="h-6 w-6 animate-spin text-muted" aria-hidden />
             <p className="text-sm font-medium text-ink">
-              AI extracting data from {fileName}…
+              {t("dropzone.extracting", { fileName: fileName ?? "" })}
             </p>
             <div className="h-2 w-40 overflow-hidden rounded-none bg-border">
               <div
@@ -94,7 +96,7 @@ export function DocumentDropzone() {
           <>
             <CheckCircle2 className="h-6 w-6 text-ink" aria-hidden />
             <p className="text-sm font-medium text-ink">{fileName}</p>
-            <p className="text-xs text-muted">Extracted successfully</p>
+            <p className="text-xs text-muted">{t("dropzone.extractedSuccessfully")}</p>
             <button
               type="button"
               onClick={(e) => {
@@ -104,16 +106,16 @@ export function DocumentDropzone() {
               }}
               className="text-xs text-muted underline hover:text-ink"
             >
-              Replace file
+              {t("dropzone.replaceFile")}
             </button>
           </>
         ) : (
           <>
             <UploadCloud className="h-6 w-6 text-muted" aria-hidden />
-            <p className="text-sm font-medium text-ink">Drop tender document here</p>
+            <p className="text-sm font-medium text-ink">{t("dropzone.dropHere")}</p>
             <p className="text-xs text-muted">
-              PDF / DOCX / image · or{" "}
-              <span className="underline">browse files</span>
+              {t("dropzone.fileTypesHint")}{" "}
+              <span className="underline">{t("dropzone.browseFiles")}</span>
             </p>
           </>
         )}

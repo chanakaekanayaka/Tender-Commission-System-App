@@ -2,6 +2,7 @@
 
 import { Pencil, Plus, X } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "@/context/LanguageContext";
 import { formatAmount, formatLKR } from "@/lib/utils/currency";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import type { PriceScheduleLineItem } from "@/shared/types/tender.types";
@@ -13,6 +14,7 @@ const INITIAL_ITEMS: PriceScheduleLineItem[] = [
 ];
 
 export function LineItemsTable() {
+  const { t } = useTranslation();
   const [items, setItems] = useState<PriceScheduleLineItem[]>(INITIAL_ITEMS);
   // Tracks which row's item-description is currently in edit mode.
   // Qty/Unit Price are always-editable inputs, so they don't need this.
@@ -50,7 +52,7 @@ export function LineItemsTable() {
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">
-          Line Items (AI-extracted, editable)
+          {t("lineItems.heading")}
         </p>
         <button
           type="button"
@@ -58,7 +60,7 @@ export function LineItemsTable() {
           className="flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-sm text-ink hover:bg-active/5"
         >
           <Plus className="h-4 w-4" aria-hidden />
-          Add Row
+          {t("lineItems.addRow")}
         </button>
       </div>
 
@@ -67,11 +69,11 @@ export function LineItemsTable() {
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-border text-xs text-muted uppercase">
-              <th className="py-2 pr-3 font-semibold">Item Description</th>
-              <th className="px-3 py-2 font-semibold">Qty</th>
-              <th className="px-3 py-2 font-semibold">Unit Price</th>
-              <th className="px-3 py-2 font-semibold">VAT (15%)</th>
-              <th className="px-3 py-2 font-semibold">Sub Total</th>
+              <th className="py-2 pr-3 font-semibold">{t("lineItems.itemDescription")}</th>
+              <th className="px-3 py-2 font-semibold">{t("lineItems.qty")}</th>
+              <th className="px-3 py-2 font-semibold">{t("lineItems.unitPrice")}</th>
+              <th className="px-3 py-2 font-semibold">{t("lineItems.vat")}</th>
+              <th className="px-3 py-2 font-semibold">{t("lineItems.subTotal")}</th>
               <th className="py-2 pl-3" />
             </tr>
           </thead>
@@ -93,7 +95,7 @@ export function LineItemsTable() {
                         className="w-full rounded-none border border-border bg-surface px-2 py-1"
                       />
                     ) : (
-                      row.item || <span className="text-muted">Untitled item</span>
+                      row.item || <span className="text-muted">{t("lineItems.untitledItem")}</span>
                     )}
                   </td>
                   <td className="px-3 py-2">
@@ -142,7 +144,7 @@ export function LineItemsTable() {
           </tbody>
           <tfoot>
             <tr className="font-semibold text-ink">
-              <td className="py-2 pr-3">TOTALS</td>
+              <td className="py-2 pr-3">{t("lineItems.totals")}</td>
               <td className="px-3 py-2" />
               <td className="px-3 py-2" />
               <td className="px-3 py-2">{formatLKR(Math.round(totals.vat))}</td>

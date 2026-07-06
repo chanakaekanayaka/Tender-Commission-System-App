@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 interface StatCardProps {
-  label: string;
-  value: string;
-  helperText?: string;
+  label: ReactNode;
+  value: ReactNode;
+  helperText?: ReactNode;
 }
 
 /** Server Component — same card shell/typography as DashboardKpiCard, without the progress bar / warning-link extras admin KPIs need. */
