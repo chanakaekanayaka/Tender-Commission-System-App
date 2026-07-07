@@ -30,17 +30,15 @@ export function DashboardKpiCard({
         {showWarningIcon && (
           <AlertTriangle className="h-3.5 w-3.5 text-amber-500" aria-hidden />
         )}
-        <span>{helperText}</span>
+        {helperText && <span>{helperText}</span>}
+        {helperText && helperLink && <span aria-hidden>·</span>}
         {helperLink && (
-          <>
-            <span aria-hidden>·</span>
-            <Link
-              href={helperLink.href}
-              className="underline underline-offset-2 hover:text-ink"
-            >
-              {helperLink.label}
-            </Link>
-          </>
+          <Link
+            href={helperLink.href}
+            className="underline underline-offset-2 hover:text-ink"
+          >
+            {helperLink.label}
+          </Link>
         )}
       </div>
     </div>

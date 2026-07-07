@@ -7,7 +7,7 @@ export interface KpiCardData {
   id: string;
   label: string;
   value: string;
-  helperText: string;
+  helperText?: string;
   helperLink?: KpiCardLink;
   showWarningIcon?: boolean;
   progressPercent?: number;

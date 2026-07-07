@@ -32,7 +32,7 @@ export const dashboardKpis: KpiCardData[] = [
     id: "total-pending-payments",
     label: "Total Pending Payments",
     value: formatLKR(2_145_300),
-    helperText: "across 14 job orders",
+    helperLink: { label: "across 14 job orders", href: "/admin/job-orders/pending" },
   },
   {
     id: "total-pending-orders",

@@ -6,7 +6,12 @@ import { useTranslation } from "@/context/LanguageContext";
 
 type Status = "idle" | "dragging" | "extracting" | "done";
 
-export function DocumentDropzone() {
+interface DocumentDropzoneProps {
+  onParse?: () => void;
+  isParsing?: boolean;
+}
+
+export function DocumentDropzone({ onParse, isParsing = false }: DocumentDropzoneProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>("idle");
   const [fileName, setFileName] = useState<string | null>(null);
@@ -120,6 +125,24 @@ export function DocumentDropzone() {
           </>
         )}
       </div>
+
+      {onParse && (
+        <button
+          type="button"
+          onClick={onParse}
+          disabled={isParsing}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink hover:bg-active/90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isParsing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              {t("dropzone.parsing")}
+            </>
+          ) : (
+            t("dropzone.parse")
+          )}
+        </button>
+      )}
     </div>
   );
 }
