@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown, Download, Eye, FileSpreadsheet, FileText, Search } from "lucide-react";
+import { ChevronDown, Download, Eye, FileSpreadsheet, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import type { PriceScheduleSummary } from "@/shared/types/tender.types";
@@ -101,19 +102,11 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="relative max-w-xs flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted"
-            aria-hidden
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("priceScheduleHistory.searchPlaceholder")}
-            className="w-full rounded-none border border-border bg-surface py-2 pr-3 pl-8 text-sm text-ink placeholder:text-muted"
-          />
-        </div>
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder={t("priceScheduleHistory.searchPlaceholder")}
+        />
 
         <ExportMenu />
       </div>

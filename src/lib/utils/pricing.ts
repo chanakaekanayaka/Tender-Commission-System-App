@@ -21,3 +21,14 @@ export function calculateLineItemTotals(
   const subTotal = base + vat;
   return { base, vat, subTotal };
 }
+
+// Job Order — Markup / Sales Commission are entered as either a fixed value or a
+// percentage of `base` (the order's New Total); whichever the user didn't type
+// is always re-derived from these so the pair never drifts out of sync.
+export function valueFromPercent(base: number, percent: number): number {
+  return base * (percent / 100);
+}
+
+export function percentFromValue(base: number, value: number): number {
+  return base === 0 ? 0 : (value / base) * 100;
+}
