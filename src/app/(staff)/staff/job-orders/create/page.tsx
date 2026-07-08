@@ -1,5 +1,5 @@
 import { T } from "@/components/features/i18n/T";
-import { JobOrderCreateForm } from "@/components/features/job-orders/JobOrderCreateForm";
+import { JobOrderStepper } from "@/components/features/job-orders/JobOrderStepper";
 
 export default function StaffJobOrderCreatePage() {
   return (
@@ -10,7 +10,7 @@ export default function StaffJobOrderCreatePage() {
         </h1>
       </div>
 
-      <JobOrderCreateForm role="staff" />
+      <JobOrderStepper role="staff" />
     </div>
   );
 }

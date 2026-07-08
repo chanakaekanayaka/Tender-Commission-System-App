@@ -7,12 +7,10 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
 import type { ActiveJobOrder, JobOrderStatus } from "@/shared/types/job-order.types";
-import { AdminJobOrderActions } from "@/components/features/job-orders/AdminJobOrderActions";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { StaffJobOrderActions } from "@/components/features/job-orders/StaffJobOrderActions";
 
 interface ActiveJobOrdersTableProps {
-  role: "admin" | "staff";
   initialData: ActiveJobOrder[];
 }
 
@@ -23,12 +21,12 @@ const STATUS_TONE: Record<JobOrderStatus, BadgeTone> = {
 };
 
 /**
- * Active Job Orders — shared table shell for both roles. Admin and Staff see
- * identical columns; only the "Actions" cell swaps (Verify vs Upload), which
- * also drives the workflow: Staff's upload flips a row from Pending → Bill
- * Created, and only then can Admin Verify it → Verified.
+ * Staff's Active Job Orders — tracks the bill-document upload workflow
+ * (Pending → Bill Created once Staff attaches the document; Admin's own
+ * verification/billing workflow now lives on `AdminActiveTable`, which
+ * tracks creation-wizard step progress instead).
  */
-export function ActiveJobOrdersTable({ role, initialData }: ActiveJobOrdersTableProps) {
+export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
@@ -58,10 +56,6 @@ export function ActiveJobOrdersTable({ role, initialData }: ActiveJobOrdersTable
     setRows((prev) =>
       prev.map((row) => (row.id === id ? { ...row, documentName: fileName, status: "Bill Created" } : row)),
     );
-  };
-
-  const handleVerify = (id: string) => {
-    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, status: "Verified" } : row)));
   };
 
   const previewRow = rows.find((row) => row.id === previewId) ?? null;
@@ -96,15 +90,11 @@ export function ActiveJobOrdersTable({ role, initialData }: ActiveJobOrdersTable
                   <JobOrderDocumentCell documentName={row.documentName} onPreview={() => setPreviewId(row.id)} />
                 </td>
                 <td className="py-2 pl-3">
-                  {role === "admin" ? (
-                    <AdminJobOrderActions status={row.status} onVerify={() => handleVerify(row.id)} />
-                  ) : (
-                    <StaffJobOrderActions
-                      jobOrderNo={row.jobOrderNo}
-                      status={row.status}
-                      onUpload={(fileName) => handleUpload(row.id, fileName)}
-                    />
-                  )}
+                  <StaffJobOrderActions
+                    jobOrderNo={row.jobOrderNo}
+                    status={row.status}
+                    onUpload={(fileName) => handleUpload(row.id, fileName)}
+                  />
                 </td>
               </tr>
             ))}

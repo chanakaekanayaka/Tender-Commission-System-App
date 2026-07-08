@@ -7,10 +7,11 @@ interface AssignStaffSelectProps {
   staffId: string;
   options: StaffOption[];
   onChange: (staffId: string) => void;
+  /** Staff role sees its own assignment as read-only, not an editable dropdown (AGENTS.md Job Order §4). */
+  disabled?: boolean;
 }
 
-/** Admin-only — Staff role never sees this (AGENTS.md Job Order §4). */
-export function AssignStaffSelect({ staffId, options, onChange }: AssignStaffSelectProps) {
+export function AssignStaffSelect({ staffId, options, onChange, disabled = false }: AssignStaffSelectProps) {
   const { t } = useTranslation();
 
   return (
@@ -21,6 +22,7 @@ export function AssignStaffSelect({ staffId, options, onChange }: AssignStaffSel
         options={options.map((opt) => ({ value: opt.id, label: opt.name }))}
         onChange={onChange}
         placeholder={t("jobOrderCreate.selectStaff")}
+        disabled={disabled}
       />
     </Card>
   );

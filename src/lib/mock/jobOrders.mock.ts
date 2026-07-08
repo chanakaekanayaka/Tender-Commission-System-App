@@ -1,5 +1,6 @@
 import type {
   JobOrderLineItem,
+  JobOrderMetadata,
   ProcurementOption,
   StaffOption,
 } from "@/shared/types/job-order.types";
@@ -51,3 +52,26 @@ export const staffOptions: StaffOption[] = [
   { id: "u3", name: "Ishara Wickramasinghe" },
   { id: "u4", name: "Dinuka Rajapaksha" },
 ];
+
+// TODO: replace with the real OCR/Gemini extraction result (AI_INSTRUCTIONS.md Workflow A)
+// keyed off the uploaded Job Order document, once that pipeline exists.
+export const jobOrderMetadataByProcurement: Record<string, JobOrderMetadata> = {
+  "PROC/2026/001": {
+    address: "No. 385, Ward Place, Colombo 07",
+    telephone: "011 269 4321",
+    email: "procurement@moh.gov.lk",
+    note: "Deliver to Central Stores, Ministry of Health.",
+  },
+  "PROC/2026/002": {
+    address: "No. 216, Denzil Kobbekaduwa Mawatha, Battaramulla",
+    telephone: "011 288 7654",
+    email: "supplies@rda.gov.lk",
+    note: "Site handover coordinated with RDA regional office.",
+  },
+  "PROC/2026/004": {
+    address: "No. 50, Sir Chittampalam A Gardiner Mawatha, Colombo 02",
+    telephone: "011 232 1856",
+    email: "procurement@ceb.lk",
+    note: "Requires substation access clearance prior to delivery.",
+  },
+};

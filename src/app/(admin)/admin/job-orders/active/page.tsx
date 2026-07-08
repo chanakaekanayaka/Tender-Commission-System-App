@@ -1,6 +1,6 @@
 import { T } from "@/components/features/i18n/T";
-import { ActiveJobOrdersTable } from "@/components/features/job-orders/ActiveJobOrdersTable";
-import { activeJobOrders } from "@/lib/mock/activeJobOrders.mock";
+import { AdminActiveTable } from "@/components/features/job-orders/AdminActiveTable";
+import { adminActiveJobOrders } from "@/lib/mock/adminJobOrders.mock";
 
 export default function AdminActiveJobOrdersPage() {
   return (
@@ -11,7 +11,7 @@ export default function AdminActiveJobOrdersPage() {
         </h1>
       </div>
 
-      <ActiveJobOrdersTable role="admin" initialData={activeJobOrders} />
+      <AdminActiveTable initialData={adminActiveJobOrders} />
     </div>
   );
 }

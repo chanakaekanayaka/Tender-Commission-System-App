@@ -11,7 +11,7 @@ export default function StaffActiveJobOrdersPage() {
         </h1>
       </div>
 
-      <ActiveJobOrdersTable role="staff" initialData={activeJobOrders} />
+      <ActiveJobOrdersTable initialData={activeJobOrders} />
     </div>
   );
 }
