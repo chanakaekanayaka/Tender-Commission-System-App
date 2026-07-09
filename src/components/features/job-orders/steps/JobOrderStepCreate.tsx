@@ -1,10 +1,9 @@
 "use client";
 
-import { Card } from "@/components/ui/Card";
-import { FormField } from "@/components/ui/FormField";
 import { DocumentDropzone } from "@/components/features/tenders/DocumentDropzone";
 import { AssignStaffSelect } from "@/components/features/job-orders/AssignStaffSelect";
 import { JobOrderLineItemsTable } from "@/components/features/job-orders/JobOrderLineItemsTable";
+import { JobOrderMetadataForm } from "@/components/features/job-orders/JobOrderMetadataForm";
 import { ProcurementSelector } from "@/components/features/job-orders/ProcurementSelector";
 import { useJobOrderWizard } from "@/components/features/job-orders/JobOrderWizardContext";
 import { useTranslation } from "@/context/LanguageContext";
@@ -19,6 +18,7 @@ export function JobOrderStepCreate() {
     metadata,
     isParsing,
     handleParse,
+    updateMetadataField,
     items,
     handleRemoveItem,
     assignedStaffId,
@@ -51,14 +51,7 @@ export function JobOrderStepCreate() {
           )}
         </div>
 
-        <Card title={t("metadataForm.heading")}>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label={t("jobOrderCreate.address")} value={metadata.address} disabled />
-            <FormField label={t("jobOrderCreate.telephone")} value={metadata.telephone} disabled />
-            <FormField label={t("jobOrderCreate.email")} value={metadata.email} disabled />
-            <FormField label={t("jobOrderCreate.note")} value={metadata.note} disabled />
-          </div>
-        </Card>
+        <JobOrderMetadataForm metadata={metadata} onChange={updateMetadataField} />
       </div>
 
       <div>

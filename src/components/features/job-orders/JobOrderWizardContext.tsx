@@ -38,6 +38,7 @@ interface JobOrderWizardValue {
   metadata: JobOrderMetadata;
   isParsing: boolean;
   handleParse: () => void;
+  updateMetadataField: (field: keyof JobOrderMetadata, value: string) => void;
 
   originalItems: JobOrderLineItem[];
   items: JobOrderLineItem[];
@@ -170,6 +171,9 @@ export function JobOrderWizardProvider({
     }, 1200);
   };
 
+  const updateMetadataField = (field: keyof JobOrderMetadata, value: string) =>
+    setMetadata((prev) => ({ ...prev, [field]: value }));
+
   const handleRemoveItem = (id: string) => setItems((prev) => prev.filter((row) => row.id !== id));
 
   const addReceipts = (files: File[]) => {
@@ -251,6 +255,7 @@ export function JobOrderWizardProvider({
     metadata,
     isParsing,
     handleParse,
+    updateMetadataField,
 
     originalItems,
     items,
