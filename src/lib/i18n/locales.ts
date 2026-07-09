@@ -10,13 +10,14 @@ export const en = {
   "sidebar.jobOrders": "Job Orders",
   "sidebar.commissions": "Commissions",
   "sidebar.otherExpenses": "Other Expenses",
-  "sidebar.systemConfigs": "System Configs",
   "sidebar.create": "Create",
   "sidebar.list": "List",
   "sidebar.history": "History",
   "sidebar.active": "Active",
   "sidebar.pending": "Pending",
   "sidebar.users": "Users",
+  "sidebar.system": "System",
+  "sidebar.config": "Config",
 
   // Staff dashboard
   "dashboard.greeting": "Hello {name} 👋",
@@ -227,6 +228,21 @@ export const en = {
   "usersList.deleteConfirmTitle": "Delete User",
   "usersList.deleteConfirmBody": "Are you sure you want to delete {name}? This action cannot be undone.",
 
+  // System Configuration
+  "systemConfig.heading": "System Configuration",
+  "systemConfig.detailsHeading": "Company Details",
+  "systemConfig.companyName": "Company Name",
+  "systemConfig.vatPercentage": "VAT Percentage",
+  "systemConfig.logoHeading": "Logo",
+  "systemConfig.chooseLogo": "Choose Logo",
+  "systemConfig.noLogoChosen": "No logo chosen",
+  "systemConfig.themeHeading": "Theme Color",
+  "systemConfig.themeHint": "Choose the sidebar background color for the whole system. Applied immediately on save — no reload needed.",
+  "systemConfig.themeColor": "Sidebar Color",
+  "systemConfig.previewLabel": "Preview",
+  "systemConfig.save": "Save Changes",
+  "systemConfig.saved": "Saved — sidebar color updated.",
+
   "language.label": "Language",
 } as const;
 
@@ -238,13 +254,14 @@ export const si: Record<TranslationKey, string> = {
   "sidebar.jobOrders": "රැකියා නියෝග",
   "sidebar.commissions": "කොමිස්",
   "sidebar.otherExpenses": "වෙනත් වියදම්",
-  "sidebar.systemConfigs": "පද්ධති සැකසුම්",
   "sidebar.create": "සාදන්න",
   "sidebar.list": "ලැයිස්තුව",
   "sidebar.history": "ඉතිහාසය",
   "sidebar.active": "ක්‍රියාකාරී",
   "sidebar.pending": "පොරොත්තු",
   "sidebar.users": "පරිශීලකයින්",
+  "sidebar.system": "පද්ධතිය",
+  "sidebar.config": "වින්‍යාසය",
 
   "dashboard.greeting": "ආයුබෝවන් {name} 👋",
   "dashboard.monthlyTarget": "මාසික ඉලක්කය",
@@ -441,6 +458,21 @@ export const si: Record<TranslationKey, string> = {
   "usersList.restricted": "සීමා {count}",
   "usersList.deleteConfirmTitle": "පරිශීලකයා මකන්න",
   "usersList.deleteConfirmBody": "ඔබට {name} මැකීමට අවශ්‍ය බව විශ්වාසද? මෙම ක්‍රියාව අහෝසි කළ නොහැක.",
+
+  // System Configuration
+  "systemConfig.heading": "පද්ධති වින්‍යාසය",
+  "systemConfig.detailsHeading": "සමාගම් විස්තර",
+  "systemConfig.companyName": "සමාගමේ නම",
+  "systemConfig.vatPercentage": "වැට් ප්‍රතිශතය",
+  "systemConfig.logoHeading": "ලාංඡනය",
+  "systemConfig.chooseLogo": "ලාංඡනය තෝරන්න",
+  "systemConfig.noLogoChosen": "ලාංඡනයක් තෝරාගෙන නැත",
+  "systemConfig.themeHeading": "තේමා වර්ණය",
+  "systemConfig.themeHint": "සම්පූර්ණ පද්ධතිය සඳහා පැත්තු පුවරුවේ පසුබිම් වර්ණය තෝරන්න. සුරැකීමෙන් වහාම යාවත්කාලීන වේ — නැවත පූරණය කිරීමක් අවශ්‍ය නොවේ.",
+  "systemConfig.themeColor": "පැත්තු පුවරු වර්ණය",
+  "systemConfig.previewLabel": "පෙරදසුන",
+  "systemConfig.save": "වෙනස්කම් සුරකින්න",
+  "systemConfig.saved": "සුරකින ලදී — පැත්තු පුවරු වර්ණය යාවත්කාලීන කරන ලදී.",
 
   "language.label": "භාෂාව",
 };

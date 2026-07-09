@@ -9,7 +9,7 @@ const PREVIEW_ITEMS: { labelKey: TranslationKey; enabledBy?: keyof UserPermissio
   { labelKey: "sidebar.priceSchedules", enabledBy: "canViewPriceSchedules" },
   { labelKey: "sidebar.jobOrders", enabledBy: "canCreateJobOrders" },
   { labelKey: "sidebar.otherExpenses", enabledBy: "canApproveExpenses" },
-  { labelKey: "sidebar.systemConfigs", enabledBy: "canManageUsers" },
+  { labelKey: "sidebar.users", enabledBy: "canManageUsers" },
 ];
 
 interface UserAccessPreviewProps {

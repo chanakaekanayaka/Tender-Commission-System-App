@@ -52,6 +52,10 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
       { labelKey: "sidebar.list", href: "/admin/users" },
     ],
   },
+  {
+    labelKey: "sidebar.system",
+    children: [{ labelKey: "sidebar.config", href: "/admin/system/config" }],
+  },
 ];
 
 interface AdminSidebarProps {

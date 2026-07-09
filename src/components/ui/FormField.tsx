@@ -9,6 +9,7 @@ interface FormFieldProps {
   disabled?: boolean;
   placeholder?: string;
   min?: number;
+  max?: number;
   step?: number;
 }
 
@@ -22,6 +23,7 @@ export function FormField({
   disabled = false,
   placeholder,
   min,
+  max,
   step,
 }: FormFieldProps) {
   return (
@@ -34,6 +36,7 @@ export function FormField({
           disabled={disabled}
           placeholder={placeholder}
           min={min}
+          max={max}
           step={step}
           onChange={(e) => onChange?.(e.target.value)}
           className={`block w-full rounded-none border border-border bg-surface px-3 py-2 text-ink focus:border-active focus:outline-none ${
