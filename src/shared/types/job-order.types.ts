@@ -41,15 +41,12 @@ export interface ProcurementOption {
   procuringEntity: string;
 }
 
-// Pending = created, no bill document yet. Bill Created = Staff uploaded the
-// document. Verified = Admin has reviewed and signed off.
-export type JobOrderStatus = "Pending" | "Bill Created" | "Verified";
-
+/** Staff's Active Job Orders — tracks creation-wizard progress (Step 1/2/3), same axis as AdminActiveJobOrder. */
 export interface ActiveJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
-  status: JobOrderStatus;
+  completedStep: JobOrderCompletionStep;
   documentName?: string;
 }
 
@@ -67,10 +64,10 @@ export interface JobOrderHistoryRecord {
 export type JobOrderCompletionStep = 1 | 2 | 3;
 
 /**
- * Admin's Active Job Orders row — tracks wizard progress, a different axis
- * from Staff's `ActiveJobOrder` (which tracks the separate bill-document
- * upload/verify workflow). `documentName` here is still whatever bill
- * document Staff has attached, shown read-only via the same document cell.
+ * Admin's Active Job Orders row — same `completedStep` axis as Staff's own
+ * `ActiveJobOrder`, since both track the one shared creation wizard, just
+ * viewed from each role's own list. `documentName` is whatever bill document
+ * Staff has attached, shown read-only via the same document cell.
  */
 export interface AdminActiveJobOrder {
   id: string;

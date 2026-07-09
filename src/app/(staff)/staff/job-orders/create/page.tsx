@@ -1,7 +1,15 @@
 import { T } from "@/components/features/i18n/T";
 import { JobOrderStepper } from "@/components/features/job-orders/JobOrderStepper";
 
-export default function StaffJobOrderCreatePage() {
+interface StaffJobOrderCreatePageProps {
+  searchParams: Promise<{ step?: string }>;
+}
+
+export default async function StaffJobOrderCreatePage({ searchParams }: StaffJobOrderCreatePageProps) {
+  const { step } = await searchParams;
+  const parsedStep = step ? Number(step) : NaN;
+  const initialStep = Number.isFinite(parsedStep) ? parsedStep : undefined;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -10,7 +18,7 @@ export default function StaffJobOrderCreatePage() {
         </h1>
       </div>
 
-      <JobOrderStepper role="staff" />
+      <JobOrderStepper role="staff" initialStep={initialStep} />
     </div>
   );
 }

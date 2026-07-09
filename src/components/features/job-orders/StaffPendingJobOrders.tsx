@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, Circle } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -12,6 +12,7 @@ import { formatDateISO } from "@/lib/utils/dueDate";
 import { formatLKR } from "@/lib/utils/currency";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { openPendingPaymentSummary } from "@/lib/utils/printPendingSummary";
+import { readGeneratedPendingJobOrders } from "@/lib/utils/staffPendingJobOrdersStore";
 import type { PaymentProcessStage, StaffPendingJobOrder } from "@/shared/types/job-order.types";
 import type { TranslationKey } from "@/lib/i18n/locales";
 
@@ -36,9 +37,24 @@ const STAGE_LABEL_KEY: Record<PaymentProcessStage, TranslationKey> = {
  */
 export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProps) {
   const { t } = useTranslation();
-  const [rows] = useState(initialData);
+  const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
   const [statusRowId, setStatusRowId] = useState<string | null>(null);
+
+  // Picks up any rows "Generate Bill" wrote from the Active table (see
+  // staffPendingJobOrdersStore.ts) — a one-time read from that external store on
+  // mount (localStorage isn't available during SSR, so it can't be the initial
+  // state), not a cascading-render loop.
+  useEffect(() => {
+    const generated = readGeneratedPendingJobOrders();
+    if (generated.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from an external store (localStorage) on mount, not a render loop
+    setRows((prev) => {
+      const existingIds = new Set(prev.map((row) => row.id));
+      const newRows = generated.filter((row) => !existingIds.has(row.id));
+      return newRows.length > 0 ? [...prev, ...newRows] : prev;
+    });
+  }, []);
 
   const totalPending = useMemo(() => rows.reduce((sum, row) => sum + row.amount, 0), [rows]);
 

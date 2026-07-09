@@ -86,12 +86,15 @@ const JobOrderWizardContext = createContext<JobOrderWizardValue | null>(null);
 
 export function JobOrderWizardProvider({
   role,
+  initialStep,
   children,
 }: {
   role: "admin" | "staff";
+  /** Lets a caller deep-link straight into a step (e.g. "Receipt Upload" → Step 2) instead of always starting fresh at Step 1. Clamped to 1-3. */
+  initialStep?: number;
   children: ReactNode;
 }) {
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => Math.min(3, Math.max(1, initialStep ?? 1)));
 
   const [procurementNo, setProcurementNo] = useState("");
   const [metadata, setMetadata] = useState<JobOrderMetadata>(EMPTY_METADATA);

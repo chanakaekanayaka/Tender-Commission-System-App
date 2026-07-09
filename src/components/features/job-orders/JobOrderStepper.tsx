@@ -12,6 +12,7 @@ import { useTranslation } from "@/context/LanguageContext";
 
 interface JobOrderStepperProps {
   role: "admin" | "staff";
+  initialStep?: number;
 }
 
 function JobOrderStepperContent() {
@@ -90,9 +91,9 @@ function JobOrderStepperContent() {
   );
 }
 
-export function JobOrderStepper({ role }: JobOrderStepperProps) {
+export function JobOrderStepper({ role, initialStep }: JobOrderStepperProps) {
   return (
-    <JobOrderWizardProvider role={role}>
+    <JobOrderWizardProvider role={role} initialStep={initialStep}>
       <JobOrderStepperContent />
     </JobOrderWizardProvider>
   );

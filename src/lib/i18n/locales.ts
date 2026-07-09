@@ -149,18 +149,17 @@ export const en = {
 
   // Job Orders — Active
   "activeJobOrders.heading": "Active Job Orders",
-  "activeJobOrders.searchPlaceholder": "Search by job order no, procurement no or status",
+  "activeJobOrders.searchPlaceholder": "Search by job order no or procurement no",
   "activeJobOrders.noResults": 'No job orders match "{query}".',
   "activeJobOrders.jobOrderNo": "Job Order No",
   "activeJobOrders.uploadedDocument": "Uploaded Document",
   "activeJobOrders.notUploaded": "Not uploaded",
   "activeJobOrders.previewUnavailable": "Preview not available in this mock — this is where the uploaded document would render.",
   "activeJobOrders.download": "Download",
-  "activeJobOrders.upload": "Upload",
-  "activeJobOrders.uploaded": "Uploaded",
-  "activeJobOrders.statusPending": "Pending",
-  "activeJobOrders.statusBillCreated": "Bill Created",
-  "activeJobOrders.statusVerified": "Verified",
+  "activeJobOrders.receiptUpload": "Receipt Upload",
+  "activeJobOrders.billGeneratedTitle": "Bill Generated",
+  "activeJobOrders.billGeneratedBody":
+    "{fileName} has been generated for {jobOrderNo}. This job order has moved to your Pending list for payment follow-up.",
 
   // Job Orders — Active (Admin: step-completion status + Generate Bill)
   "activeJobOrders.step1Complete": "Step 1 Complete",
@@ -490,18 +489,17 @@ export const si: Record<TranslationKey, string> = {
   "jobOrderCreate.createJobOrder": "රැකියා නියෝගය සාදන්න →",
 
   "activeJobOrders.heading": "සක්‍රීය රැකියා නියෝග",
-  "activeJobOrders.searchPlaceholder": "රැකියා නියෝග අංකය, ප්‍රසම්පාදන අංකය හෝ තත්ත්වය අනුව සොයන්න",
+  "activeJobOrders.searchPlaceholder": "රැකියා නියෝග අංකය හෝ ප්‍රසම්පාදන අංකය අනුව සොයන්න",
   "activeJobOrders.noResults": '"{query}" ට ගැලපෙන රැකියා නියෝග නොමැත.',
   "activeJobOrders.jobOrderNo": "රැකියා නියෝග අංකය",
   "activeJobOrders.uploadedDocument": "උඩුගත කළ ලේඛනය",
   "activeJobOrders.notUploaded": "උඩුගත කර නොමැත",
   "activeJobOrders.previewUnavailable": "මෙම මොක් තුළ පෙරදසුන නොමැත — උඩුගත කළ ලේඛනය පෙන්වන ස්ථානය මෙයයි.",
   "activeJobOrders.download": "බාගන්න",
-  "activeJobOrders.upload": "උඩුගත කරන්න",
-  "activeJobOrders.uploaded": "උඩුගත කළා",
-  "activeJobOrders.statusPending": "පොරොත්තු",
-  "activeJobOrders.statusBillCreated": "බිල් සාදන ලදී",
-  "activeJobOrders.statusVerified": "සත්‍යාපිතයි",
+  "activeJobOrders.receiptUpload": "රිසිට්පත් උඩුගත කිරීම",
+  "activeJobOrders.billGeneratedTitle": "බිල්පත සාදන ලදී",
+  "activeJobOrders.billGeneratedBody":
+    "{jobOrderNo} සඳහා {fileName} සාදන ලදී. මෙම රැකියා නියෝගය ගෙවීම් පසුවිපරම සඳහා ඔබගේ පොරොත්තු ලැයිස්තුවට ගෙන ගොස් ඇත.",
 
   "activeJobOrders.step1Complete": "පියවර 1 සම්පූර්ණයි",
   "activeJobOrders.step2Complete": "පියවර 2 සම්පූර්ණයි",
