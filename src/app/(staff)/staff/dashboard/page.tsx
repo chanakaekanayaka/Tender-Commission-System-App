@@ -1,4 +1,5 @@
 import { T } from "@/components/features/i18n/T";
+import { MonthlyTargetCard } from "@/components/features/dashboard/MonthlyTargetCard";
 import { PendingOrdersTable } from "@/components/features/dashboard/PendingOrdersTable";
 import { StaffPerformanceChart } from "@/components/features/dashboard/StaffPerformanceChart";
 import { StatCard } from "@/components/ui/StatCard";
@@ -18,9 +19,10 @@ export default function StaffDashboardPage() {
       </h1>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <StatCard
+        <MonthlyTargetCard
           label={<T k="dashboard.monthlyTarget" />}
-          value={formatLKR(staffStats.monthlyTarget)}
+          targetAmount={staffStats.monthlyTarget}
+          achievedAmount={staffStats.achievedAmount}
         />
         <StatCard
           label={<T k="dashboard.pendingCommission" />}

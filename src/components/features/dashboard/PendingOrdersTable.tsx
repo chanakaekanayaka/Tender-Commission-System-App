@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import { T } from "@/components/features/i18n/T";
+import { JobOrderDetailModal } from "@/components/features/job-orders/JobOrderDetailModal";
 import { UploadButton } from "@/components/features/dashboard/UploadButton";
 import type { PendingOrderRow } from "@/types/dashboard";
 
@@ -6,8 +10,10 @@ interface PendingOrdersTableProps {
   orders: PendingOrderRow[];
 }
 
-/** Server Component — static table shell; UploadButton and <T/> are the only client pieces. */
+/** Job Number opens JobOrderDetailModal's read-only drill-down; UploadButton stays a separate action. */
 export function PendingOrdersTable({ orders }: PendingOrdersTableProps) {
+  const [selectedJobNumber, setSelectedJobNumber] = useState<string | null>(null);
+
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <h2 className="mb-3 font-semibold text-ink">
@@ -29,7 +35,15 @@ export function PendingOrdersTable({ orders }: PendingOrdersTableProps) {
           <tbody>
             {orders.map((order) => (
               <tr key={order.id} className="border-b border-border last:border-0">
-                <td className="py-3 pr-4 text-ink">{order.jobNumber}</td>
+                <td className="py-3 pr-4">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedJobNumber(order.jobNumber)}
+                    className="text-ink underline decoration-border underline-offset-2 hover:text-active"
+                  >
+                    {order.jobNumber}
+                  </button>
+                </td>
                 <td className="py-3">
                   <UploadButton jobNumber={order.jobNumber} />
                 </td>
@@ -38,6 +52,8 @@ export function PendingOrdersTable({ orders }: PendingOrdersTableProps) {
           </tbody>
         </table>
       </div>
+
+      <JobOrderDetailModal jobNumber={selectedJobNumber} onClose={() => setSelectedJobNumber(null)} />
     </div>
   );
 }

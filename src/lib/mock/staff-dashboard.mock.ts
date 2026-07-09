@@ -6,6 +6,7 @@ export const staffName = "Nimal";
 
 export const staffStats = {
   monthlyTarget: 900_000,
+  achievedAmount: 550_000,
   pendingCommission: 70_000,
   ordersToComplete: 10,
 };

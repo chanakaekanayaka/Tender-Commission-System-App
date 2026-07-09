@@ -101,3 +101,20 @@ export interface StaffPendingJobOrder {
   dateSubmitted: string;
   stage: PaymentProcessStage;
 }
+
+/**
+ * Full detail record for the Staff Dashboard's Job Order Detail Modal — combines the
+ * metadata/line-items already modeled elsewhere with the financial-summary figures
+ * (commission, other expenses) that otherwise only exist as transient wizard state.
+ * `originalTotal` is deliberately not stored here — it's derived from `lineItems` via
+ * `calculateLineItemTotals`, same as everywhere else line-item totals are shown.
+ */
+export interface JobOrderDetail {
+  jobOrderNo: string;
+  procurementNo: string;
+  metadata: JobOrderMetadata;
+  lineItems: JobOrderLineItem[];
+  commissionValue: number;
+  otherExpensesTotal: number;
+  documentName?: string;
+}

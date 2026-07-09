@@ -34,6 +34,16 @@ export const en = {
   "dashboard.uploadBillCopy": "Upload Bill Copy",
   "dashboard.upload": "Upload",
   "dashboard.uploaded": "Uploaded",
+  "dashboard.daysRemaining": "{days} days remaining this month",
+  "dashboard.percentAchieved": "{percent}% achieved",
+
+  // Job Order Detail Modal — Staff Dashboard "Pending Orders" job number drill-down
+  "jobOrderDetailModal.notFound": "No details available for this job order.",
+  "jobOrderDetailModal.metadataHeading": "Metadata",
+  "jobOrderDetailModal.lineItemsHeading": "Line Items",
+  "jobOrderDetailModal.summaryHeading": "Financial Summary",
+  "jobOrderDetailModal.otherExpenses": "Other Expenses",
+  "jobOrderDetailModal.documentHeading": "Document Preview",
 
   // Price Schedule — Create
   "tenders.createHeading": "New Price Schedule",
@@ -237,6 +247,7 @@ export const en = {
   "common.save": "Save",
   "common.name": "Name",
   "common.role": "Role",
+  "common.close": "Close",
 
   // Users — Create/Edit form
   "userForm.createHeading": "New User",
@@ -372,6 +383,15 @@ export const si: Record<TranslationKey, string> = {
   "dashboard.uploadBillCopy": "බිල් පිටපත උඩුගත කරන්න",
   "dashboard.upload": "උඩුගත කරන්න",
   "dashboard.uploaded": "උඩුගත කළා",
+  "dashboard.daysRemaining": "මාසය සඳහා දින {days} ක් ඉතිරිව ඇත",
+  "dashboard.percentAchieved": "{percent}% සාක්ෂාත් කර ඇත",
+
+  "jobOrderDetailModal.notFound": "මෙම රැකියා නියෝගය සඳහා විස්තර නොමැත.",
+  "jobOrderDetailModal.metadataHeading": "පාර්ශ්ව දත්ත",
+  "jobOrderDetailModal.lineItemsHeading": "අයිතම",
+  "jobOrderDetailModal.summaryHeading": "මූල්‍ය සාරාංශය",
+  "jobOrderDetailModal.otherExpenses": "වෙනත් වියදම්",
+  "jobOrderDetailModal.documentHeading": "ලේඛන පෙරදසුන",
 
   "tenders.createHeading": "නව මිල ලේඛනය",
   "tenders.saveDraft": "කෙටුම්පත සුරකින්න",
@@ -562,6 +582,7 @@ export const si: Record<TranslationKey, string> = {
   "common.save": "සුරකින්න",
   "common.name": "නම",
   "common.role": "තනතුර",
+  "common.close": "වසන්න",
 
   // Users — Create/Edit form
   "userForm.createHeading": "නව පරිශීලකයෙක්",
