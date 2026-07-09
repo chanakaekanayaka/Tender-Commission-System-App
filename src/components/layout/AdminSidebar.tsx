@@ -46,10 +46,10 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     ],
   },
   {
-    labelKey: "sidebar.systemConfigs",
+    labelKey: "sidebar.users",
     children: [
-      { labelKey: "sidebar.usersCreate", href: "/admin/users/create" },
-      { labelKey: "sidebar.usersList", href: "/admin/users" },
+      { labelKey: "sidebar.create", href: "/admin/users/create" },
+      { labelKey: "sidebar.list", href: "/admin/users" },
     ],
   },
 ];
