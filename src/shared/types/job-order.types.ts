@@ -88,3 +88,16 @@ export interface AdminPendingJobOrder {
   billAmount: number;
   billGeneratedDate: string;
 }
+
+/** Staff's read-only view of where a submitted bill is in Admin's review/payment pipeline. */
+export type PaymentProcessStage = "Submitted" | "Pending Admin Approval" | "Payment Uploaded";
+
+/** Staff's Pending Job Orders row — bills already submitted for billing that haven't cleared payment yet. */
+export interface StaffPendingJobOrder {
+  id: string;
+  jobOrderNo: string;
+  procurementNo: string;
+  amount: number;
+  dateSubmitted: string;
+  stage: PaymentProcessStage;
+}

@@ -64,7 +64,17 @@ export function SystemConfig() {
             step={1}
             suffix="%"
           />
+          <FormField
+            label={t("systemConfig.paymentDueDays")}
+            value={values.paymentDueDays}
+            onChange={(v) => update("paymentDueDays", Math.max(0, Number(v) || 0))}
+            type="number"
+            min={0}
+            step={1}
+            suffix={t("systemConfig.paymentDueDaysSuffix")}
+          />
         </div>
+        <p className="mt-3 text-xs text-muted">{t("systemConfig.paymentDueDaysHint")}</p>
       </Card>
 
       <Card title={t("systemConfig.logoHeading")}>

@@ -5,4 +5,5 @@ export const defaultSystemConfig: SystemConfig = {
   companyName: "TenderCMS (Pvt) Ltd.",
   vatPercentage: 15,
   themeColor: "#111827",
+  paymentDueDays: 14,
 };
