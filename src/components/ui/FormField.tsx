@@ -4,7 +4,7 @@ interface FormFieldProps {
   label: ReactNode;
   value: string | number;
   onChange?: (value: string) => void;
-  type?: "text" | "number";
+  type?: "text" | "number" | "date";
   suffix?: ReactNode;
   disabled?: boolean;
   placeholder?: string;

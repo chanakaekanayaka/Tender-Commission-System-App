@@ -5,16 +5,17 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 const STORAGE_KEY = "tcms-sidebar-color";
 const DEFAULT_SIDEBAR_COLOR = "#111827";
 
+function readStoredSidebarColor(): string {
+  if (typeof window === "undefined") return DEFAULT_SIDEBAR_COLOR;
+  return window.localStorage.getItem(STORAGE_KEY) ?? DEFAULT_SIDEBAR_COLOR;
+}
+
 interface ThemeContextValue {
   sidebarColor: string;
   setSidebarColor: (color: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-function paintSidebar(color: string) {
-  document.documentElement.style.setProperty("--bg-sidebar", color);
-}
 
 /**
  * Owns the one runtime-configurable design token — the sidebar background —
@@ -29,21 +30,18 @@ function paintSidebar(color: string) {
  * by mounting position, not by any per-portal code.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [sidebarColor, setSidebarColorState] = useState(DEFAULT_SIDEBAR_COLOR);
+  // Lazy initializer, not an effect: reads localStorage once, synchronously,
+  // the first time this runs in the browser — no flash-of-default-then-correct,
+  // and no setState-inside-useEffect (SSR/hydration is unaffected since this
+  // component's own JSX never renders `sidebarColor` into the DOM itself).
+  const [sidebarColor, setSidebarColorState] = useState(readStoredSidebarColor);
 
-  // Restore a previously saved color once the client mounts — SSR has no
-  // localStorage/window, so this stays a no-op during the server render and
-  // the page first paints with the CSS default, exactly like a fresh visitor.
+  // Pure DOM sync — not a setState call, so this is exactly what an effect is for.
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      paintSidebar(stored);
-      setSidebarColorState(stored);
-    }
-  }, []);
+    document.documentElement.style.setProperty("--bg-sidebar", sidebarColor);
+  }, [sidebarColor]);
 
   const setSidebarColor = (color: string) => {
-    paintSidebar(color);
     setSidebarColorState(color);
     // TODO: PATCH /api/system-config once that route exists — for now this is
     // the only persistence layer available (UI-only mock phase, AGENTS.md).

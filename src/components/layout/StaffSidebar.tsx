@@ -33,7 +33,7 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     ],
   },
   {
-    labelKey: "sidebar.commissions",
+    labelKey: "sidebar.payments",
     children: [
       { labelKey: "sidebar.pending", href: "/staff/commissions/pending" },
       { labelKey: "sidebar.history", href: "/staff/commissions/history" },
@@ -44,6 +44,13 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     children: [
       { labelKey: "sidebar.create", href: "/staff/expenses/create" },
       { labelKey: "sidebar.history", href: "/staff/expenses/history" },
+    ],
+  },
+  {
+    labelKey: "sidebar.invoices",
+    children: [
+      { labelKey: "sidebar.generateInvoice", href: "/staff/invoices/generate" },
+      { labelKey: "sidebar.history", href: "/staff/invoices/history" },
     ],
   },
 ];

@@ -46,6 +46,13 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     ],
   },
   {
+    labelKey: "sidebar.invoices",
+    children: [
+      { labelKey: "sidebar.invoiceRequests", href: "/admin/invoices/requests" },
+      { labelKey: "sidebar.history", href: "/admin/invoices/history" },
+    ],
+  },
+  {
     labelKey: "sidebar.users",
     children: [
       { labelKey: "sidebar.create", href: "/admin/users/create" },
