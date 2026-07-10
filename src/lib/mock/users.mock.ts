@@ -11,6 +11,7 @@ export const users: User[] = [
     monthlyTarget: 250_000,
     role: "Staff",
     permissions: { ...DEFAULT_PERMISSIONS },
+    status: "Active",
   },
   {
     id: "u2",
@@ -21,6 +22,7 @@ export const users: User[] = [
     monthlyTarget: 225_000,
     role: "Staff",
     permissions: { ...DEFAULT_PERMISSIONS, canApproveExpenses: false },
+    status: "Blocked",
   },
   {
     id: "u3",
@@ -31,6 +33,7 @@ export const users: User[] = [
     monthlyTarget: 200_000,
     role: "Staff",
     permissions: { ...DEFAULT_PERMISSIONS, canViewPriceSchedules: false, canApproveExpenses: false },
+    status: "Active",
   },
   {
     id: "u4",
@@ -41,5 +44,6 @@ export const users: User[] = [
     monthlyTarget: 0,
     role: "Admin",
     permissions: { ...ADMIN_PERMISSIONS },
+    status: "Active",
   },
 ];

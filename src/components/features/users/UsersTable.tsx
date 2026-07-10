@@ -1,5 +1,6 @@
 "use client";
 
+import { Lock, Unlock } from "lucide-react";
 import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
@@ -17,13 +18,13 @@ function restrictedCount(user: User) {
   return Object.values(user.permissions).filter((allowed) => !allowed).length;
 }
 
-/** Mock-only list: Edit opens the shared UserForm in a Modal, Delete opens a confirm Modal. Row mutations only live for the component's lifetime — no backend wired up yet (AGENTS.md). */
+/** Mock-only list: Edit opens the shared UserForm in a Modal, Block/Unblock opens a confirm Modal that flips the row's status. Row mutations only live for the component's lifetime — no backend wired up yet (AGENTS.md). */
 export function UsersTable({ initialData }: UsersTableProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
 
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -33,16 +34,19 @@ export function UsersTable({ initialData }: UsersTableProps) {
   });
 
   const editingUser = rows.find((row) => row.id === editingId) ?? null;
-  const deletingUser = rows.find((row) => row.id === deletingId) ?? null;
+  const statusTargetUser = rows.find((row) => row.id === statusTargetId) ?? null;
+  const nextStatus = statusTargetUser?.status === "Active" ? "Blocked" : "Active";
 
   const handleUpdate = (values: UserFormValues) => {
     setRows((prev) => prev.map((row) => (row.id === editingId ? { ...row, ...values } : row)));
     setEditingId(null);
   };
 
-  const handleDelete = () => {
-    setRows((prev) => prev.filter((row) => row.id !== deletingId));
-    setDeletingId(null);
+  const handleConfirmStatusChange = () => {
+    setRows((prev) =>
+      prev.map((row) => (row.id === statusTargetId ? { ...row, status: nextStatus } : row)),
+    );
+    setStatusTargetId(null);
   };
 
   return (
@@ -61,6 +65,16 @@ export function UsersTable({ initialData }: UsersTableProps) {
             cell: (row) => <StatusBadge label={row.role} tone={row.role === "Admin" ? "blue" : "neutral"} />,
           },
           {
+            id: "status",
+            header: t("common.status"),
+            cell: (row) => (
+              <StatusBadge
+                label={row.status === "Active" ? t("usersList.statusActive") : t("usersList.statusBlocked")}
+                tone={row.status === "Active" ? "green" : "red"}
+              />
+            ),
+          },
+          {
             id: "access",
             header: t("usersList.access"),
             cell: (row) =>
@@ -74,7 +88,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
             id: "actions",
             header: t("common.actions"),
             cell: (row) => (
-              <div className="flex gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setEditingId(row.id)}
@@ -82,13 +96,25 @@ export function UsersTable({ initialData }: UsersTableProps) {
                 >
                   {t("common.edit")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDeletingId(row.id)}
-                  className="text-xs font-medium text-ink underline"
-                >
-                  {t("common.delete")}
-                </button>
+                {row.status === "Active" ? (
+                  <button
+                    type="button"
+                    onClick={() => setStatusTargetId(row.id)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700"
+                  >
+                    <Lock className="h-3.5 w-3.5" aria-hidden />
+                    {t("usersList.block")}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setStatusTargetId(row.id)}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700"
+                  >
+                    <Unlock className="h-3.5 w-3.5" aria-hidden />
+                    {t("usersList.unblock")}
+                  </button>
+                )}
               </div>
             ),
           },
@@ -104,26 +130,39 @@ export function UsersTable({ initialData }: UsersTableProps) {
         )}
       </Modal>
 
-      <Modal open={deletingUser !== null} onClose={() => setDeletingId(null)} title={t("usersList.deleteConfirmTitle")}>
-        {deletingUser && (
+      <Modal
+        open={statusTargetUser !== null}
+        onClose={() => setStatusTargetId(null)}
+        title={nextStatus === "Blocked" ? t("usersList.blockConfirmTitle") : t("usersList.unblockConfirmTitle")}
+      >
+        {statusTargetUser && (
           <div className="space-y-4">
             <p className="text-sm text-ink">
-              {t("usersList.deleteConfirmBody", { name: `${deletingUser.firstName} ${deletingUser.lastName}` })}
+              {t(nextStatus === "Blocked" ? "usersList.blockConfirmBody" : "usersList.unblockConfirmBody", {
+                name: `${statusTargetUser.firstName} ${statusTargetUser.lastName}`,
+              })}
             </p>
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setDeletingId(null)}
+                onClick={() => setStatusTargetId(null)}
                 className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
               >
                 {t("common.cancel")}
               </button>
               <button
                 type="button"
-                onClick={handleDelete}
-                className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink"
+                onClick={handleConfirmStatusChange}
+                className={`inline-flex items-center gap-2 rounded-none px-4 py-2 text-sm font-medium text-white ${
+                  nextStatus === "Blocked" ? "bg-amber-600 hover:bg-amber-700" : "bg-emerald-600 hover:bg-emerald-700"
+                }`}
               >
-                {t("common.delete")}
+                {nextStatus === "Blocked" ? (
+                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <Unlock className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {nextStatus === "Blocked" ? t("usersList.block") : t("usersList.unblock")}
               </button>
             </div>
           </div>

@@ -1,5 +1,7 @@
 export type UserRole = "Admin" | "Staff";
 
+export type UserStatus = "Active" | "Blocked";
+
 /** Individual access flags an Admin can restrict on a Staff account. Admin accounts always have every flag enabled — the Permissions section is hidden entirely for them in the form. */
 export interface UserPermissions {
   canCreateJobOrders: boolean;
@@ -31,4 +33,5 @@ export interface User {
   monthlyTarget: number;
   role: UserRole;
   permissions: UserPermissions;
+  status: UserStatus;
 }
