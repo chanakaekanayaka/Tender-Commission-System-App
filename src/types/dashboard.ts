@@ -24,6 +24,11 @@ export interface StaffMonthlyPerformance {
   amount: number;
 }
 
+export interface PriceScheduleTrendPoint {
+  month: string;
+  count: number;
+}
+
 export interface PendingOrderRow {
   id: string;
   jobNumber: string;

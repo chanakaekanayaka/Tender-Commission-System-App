@@ -53,6 +53,14 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
       { labelKey: "sidebar.history", href: "/staff/invoices/history" },
     ],
   },
+  {
+    labelKey: "sidebar.items",
+    children: [
+      { labelKey: "sidebar.catalog", href: "/staff/items/catalog" },
+      { labelKey: "sidebar.marketAnalysis", href: "/staff/items/market-analysis" },
+      { labelKey: "sidebar.createSpecsDoc", href: "/staff/items/create-specs-doc" },
+    ],
+  },
 ];
 
 interface StaffSidebarProps {

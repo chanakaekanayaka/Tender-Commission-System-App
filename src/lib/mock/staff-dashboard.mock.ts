@@ -1,4 +1,4 @@
-import type { PendingOrderRow, StaffMonthlyPerformance } from "@/types/dashboard";
+import type { PendingOrderRow, PriceScheduleTrendPoint, StaffMonthlyPerformance } from "@/types/dashboard";
 
 // TODO: replace with data fetched from src/services once the staff dashboard API route exists.
 
@@ -22,4 +22,13 @@ export const staffMonthlyPerformance: StaffMonthlyPerformance[] = [
   { month: "Jan 2026", amount: 62_000 },
   { month: "Feb 2026", amount: 85_500 },
   { month: "Mar 2026", amount: 70_000 },
+];
+
+export const priceScheduleTrend: PriceScheduleTrendPoint[] = [
+  { month: "Jan 2026", count: 4 },
+  { month: "Feb 2026", count: 7 },
+  { month: "Mar 2026", count: 5 },
+  { month: "Apr 2026", count: 9 },
+  { month: "May 2026", count: 6 },
+  { month: "Jun 2026", count: 11 },
 ];

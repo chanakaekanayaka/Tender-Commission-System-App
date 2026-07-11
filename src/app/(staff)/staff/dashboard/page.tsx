@@ -1,11 +1,13 @@
 import { T } from "@/components/features/i18n/T";
 import { MonthlyTargetCard } from "@/components/features/dashboard/MonthlyTargetCard";
 import { PendingOrdersTable } from "@/components/features/dashboard/PendingOrdersTable";
+import { PriceScheduleChart } from "@/components/features/dashboard/PriceScheduleChart";
 import { StaffPerformanceChart } from "@/components/features/dashboard/StaffPerformanceChart";
 import { StatCard } from "@/components/ui/StatCard";
 import { formatLKR } from "@/lib/utils/currency";
 import {
   pendingOrders,
+  priceScheduleTrend,
   staffMonthlyPerformance,
   staffName,
   staffStats,
@@ -44,6 +46,8 @@ export default function StaffDashboardPage() {
           <StaffPerformanceChart data={staffMonthlyPerformance} />
         </div>
       </div>
+
+      <PriceScheduleChart data={priceScheduleTrend} />
     </div>
   );
 }

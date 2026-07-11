@@ -22,6 +22,10 @@ export const en = {
   "sidebar.invoices": "Invoices",
   "sidebar.generateInvoice": "Generate Invoice",
   "sidebar.invoiceRequests": "Invoice Requests",
+  "sidebar.items": "Items",
+  "sidebar.catalog": "Catalog",
+  "sidebar.marketAnalysis": "Market Analysis",
+  "sidebar.createSpecsDoc": "Create Specs Doc",
 
   // Staff dashboard
   "dashboard.greeting": "Hello {name} 👋",
@@ -36,6 +40,7 @@ export const en = {
   "dashboard.uploaded": "Uploaded",
   "dashboard.daysRemaining": "{days} days remaining this month",
   "dashboard.percentAchieved": "{percent}% achieved",
+  "dashboard.priceScheduleTrends": "Price Schedule Trends",
 
   // Job Order Detail Modal — Staff Dashboard "Pending Orders" job number drill-down
   "jobOrderDetailModal.notFound": "No details available for this job order.",
@@ -373,6 +378,32 @@ export const en = {
   "otherExpenses.noReceipt": "No receipt",
   "otherExpenses.searchPlaceholder": "Search by job order no or category…",
 
+  // Items — Catalog / Market Analysis / Create Specs Doc
+  "items.catalogTitle": "Catalog",
+  "items.marketAnalysisTitle": "Market Analysis",
+  "items.createSpecsDocTitle": "Create Specs Document",
+  "items.itemName": "Item Name",
+  "items.itemCode": "Item Code",
+  "items.uploadImages": "Upload Images",
+  "items.dragDropHint": "Drag & drop an image here",
+  "items.specs": "Specifications",
+  "items.addSpec": "New Spec",
+  "items.specNamePlaceholder": "Spec name (e.g. Color)",
+  "items.add": "Add",
+  "items.save": "Save Item",
+  "items.edit": "Edit",
+  "items.existingItems": "Existing Items",
+  "items.searchPlaceholder": "Search by item name…",
+  "items.ourBiddingPrices": "Our Bidding Prices",
+  "items.othersLowestPrices": "Other's Lowest Prices",
+  "items.suppliedQty": "Supplied Qty",
+  "items.bidQty": "Bid Qty",
+  "items.noResults": "No items match \"{query}\".",
+  "items.selectAll": "Select all",
+  "items.selectedCount": "{count} item(s) selected",
+  "items.generatePdf": "Generate PDF",
+  "items.noItems": "No items available.",
+
   "language.label": "Language",
 } as const;
 
@@ -396,6 +427,10 @@ export const si: Record<TranslationKey, string> = {
   "sidebar.invoices": "ඉන්වොයිස්",
   "sidebar.generateInvoice": "ඉන්වොයිසය සාදන්න",
   "sidebar.invoiceRequests": "ඉන්වොයිස් ඉල්ලීම්",
+  "sidebar.items": "අයිතම",
+  "sidebar.catalog": "නාමාවලිය",
+  "sidebar.marketAnalysis": "වෙළඳපොළ විශ්ලේෂණය",
+  "sidebar.createSpecsDoc": "පිරිවිතර ලේඛනය සාදන්න",
 
   "dashboard.greeting": "ආයුබෝවන් {name} 👋",
   "dashboard.monthlyTarget": "මාසික ඉලක්කය",
@@ -409,6 +444,7 @@ export const si: Record<TranslationKey, string> = {
   "dashboard.uploaded": "උඩුගත කළා",
   "dashboard.daysRemaining": "මාසය සඳහා දින {days} ක් ඉතිරිව ඇත",
   "dashboard.percentAchieved": "{percent}% සාක්ෂාත් කර ඇත",
+  "dashboard.priceScheduleTrends": "මිල උපලේඛන ප්‍රවණතා",
 
   "jobOrderDetailModal.notFound": "මෙම රැකියා නියෝගය සඳහා විස්තර නොමැත.",
   "jobOrderDetailModal.metadataHeading": "පාර්ශ්ව දත්ත",
@@ -731,6 +767,32 @@ export const si: Record<TranslationKey, string> = {
   "otherExpenses.approved": "අනුමත කර ඇත",
   "otherExpenses.noReceipt": "රිසිට්පතක් නැත",
   "otherExpenses.searchPlaceholder": "රැකියා නියෝග අංකය හෝ වර්ගය සොයන්න…",
+
+  // Items — Catalog / Market Analysis / Create Specs Doc
+  "items.catalogTitle": "නාමාවලිය",
+  "items.marketAnalysisTitle": "වෙළඳපොළ විශ්ලේෂණය",
+  "items.createSpecsDocTitle": "පිරිවිතර ලේඛනය සාදන්න",
+  "items.itemName": "අයිතමයේ නම",
+  "items.itemCode": "අයිතම කේතය",
+  "items.uploadImages": "රූප උඩුගත කරන්න",
+  "items.dragDropHint": "රූපයක් මෙහි ඇද දමන්න",
+  "items.specs": "පිරිවිතර",
+  "items.addSpec": "නව පිරිවිතරය",
+  "items.specNamePlaceholder": "පිරිවිතර නම (උදා. වර්ණය)",
+  "items.add": "එකතු කරන්න",
+  "items.save": "අයිතමය සුරකින්න",
+  "items.edit": "සංස්කරණය",
+  "items.existingItems": "පවතින අයිතම",
+  "items.searchPlaceholder": "අයිතමයේ නම සොයන්න…",
+  "items.ourBiddingPrices": "අපගේ ලංසු මිල",
+  "items.othersLowestPrices": "අනෙක් අයගේ අඩුම මිල",
+  "items.suppliedQty": "සැපයූ ප්‍රමාණය",
+  "items.bidQty": "ලංසු ප්‍රමාණය",
+  "items.noResults": "\"{query}\" හා ගැලපෙන අයිතම නැත.",
+  "items.selectAll": "සියල්ල තෝරන්න",
+  "items.selectedCount": "අයිතම {count}ක් තෝරාගෙන ඇත",
+  "items.generatePdf": "PDF සාදන්න",
+  "items.noItems": "අයිතම නොමැත.",
 
   "language.label": "භාෂාව",
 };
