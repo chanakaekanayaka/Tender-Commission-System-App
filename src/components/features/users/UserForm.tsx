@@ -13,6 +13,8 @@ export interface UserFormValues {
   firstName: string;
   lastName: string;
   email: string;
+  /** Only collected (and required) when creating a new account — editing never touches the password. */
+  password: string;
   address: string;
   monthlyTarget: number;
   role: UserRole;
@@ -21,7 +23,7 @@ export interface UserFormValues {
 
 interface UserFormProps {
   initialUser?: User;
-  onSubmit: (values: UserFormValues) => void;
+  onSubmit: (values: UserFormValues) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -29,6 +31,7 @@ const emptyValues: UserFormValues = {
   firstName: "",
   lastName: "",
   email: "",
+  password: "",
   address: "",
   monthlyTarget: 0,
   role: "Staff",
@@ -44,6 +47,7 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
           firstName: initialUser.firstName,
           lastName: initialUser.lastName,
           email: initialUser.email,
+          password: "",
           address: initialUser.address,
           monthlyTarget: initialUser.monthlyTarget,
           role: initialUser.role,
@@ -51,8 +55,11 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
         }
       : emptyValues,
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const isAdmin = values.role === "Admin";
+  const isCreating = !initialUser;
 
   const update = <K extends keyof UserFormValues>(key: K, value: UserFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -65,13 +72,23 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
       permissions: role === "Admin" ? { ...ADMIN_PERMISSIONS } : prev.permissions,
     }));
 
-  const canSubmit = values.firstName.trim() !== "" && values.lastName.trim() !== "" && values.email.trim() !== "";
+  const canSubmit =
+    values.firstName.trim() !== "" &&
+    values.lastName.trim() !== "" &&
+    values.email.trim() !== "" &&
+    (isCreating ? values.password.length >= 8 : true);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: POST /api/users (create) or PATCH /api/users/:id (edit) once that route exists — UI-only mock phase (AGENTS.md).
-    console.log(initialUser ? "Update user" : "Create user", values);
-    onSubmit(values);
+    setSubmitError(null);
+    setIsSubmitting(true);
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -89,6 +106,15 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
             onChange={(v) => update("lastName", v)}
           />
           <FormField label={t("userForm.email")} value={values.email} onChange={(v) => update("email", v)} />
+          {isCreating && (
+            <FormField
+              label={t("userForm.password")}
+              type="password"
+              value={values.password}
+              onChange={(v) => update("password", v)}
+              placeholder={t("userForm.passwordPlaceholder")}
+            />
+          )}
           <SelectField
             label={t("common.role")}
             value={values.role}
@@ -128,6 +154,8 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
         )}
       </Card>
 
+      {submitError && <p className="text-sm text-red-600">{submitError}</p>}
+
       <div className="flex flex-wrap justify-end gap-3">
         {onCancel && (
           <button
@@ -140,10 +168,14 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
         )}
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={!canSubmit || isSubmitting}
           className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {initialUser ? t("userForm.updateUser") : t("userForm.createUser")}
+          {isSubmitting
+            ? t("common.saving")
+            : initialUser
+              ? t("userForm.updateUser")
+              : t("userForm.createUser")}
         </button>
       </div>
     </form>

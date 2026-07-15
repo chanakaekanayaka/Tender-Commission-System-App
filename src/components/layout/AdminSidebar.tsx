@@ -1,3 +1,4 @@
+import { LogoutButton } from "@/components/features/auth/LogoutButton";
 import { SidebarGroup } from "@/components/layout/SidebarGroup";
 import { SidebarItem } from "@/components/layout/SidebarItem";
 import type { TranslationKey } from "@/lib/i18n/locales";
@@ -105,6 +106,10 @@ export function AdminSidebar({ className = "" }: AdminSidebarProps) {
           ),
         )}
       </nav>
+
+      <div className="border-t border-white/10 p-3">
+        <LogoutButton />
+      </div>
     </div>
   );
 }

@@ -1,11 +1,9 @@
 import type { PendingOrderRow, PriceScheduleTrendPoint, StaffMonthlyPerformance } from "@/types/dashboard";
 
-// TODO: replace with data fetched from src/services once the staff dashboard API route exists.
-
-export const staffName = "Nimal";
+// Name and monthlyTarget now come from the logged-in user's real DB record (see staff/dashboard/page.tsx).
+// Everything below is still a placeholder until Job Orders / Commissions have their own backend.
 
 export const staffStats = {
-  monthlyTarget: 900_000,
   achievedAmount: 550_000,
   pendingCommission: 70_000,
   ordersToComplete: 10,

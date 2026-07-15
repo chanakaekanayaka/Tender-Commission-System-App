@@ -1,3 +1,4 @@
+import { LogoutButton } from "@/components/features/auth/LogoutButton";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { SidebarGroup } from "@/components/layout/SidebarGroup";
 import { SidebarItem } from "@/components/layout/SidebarItem";
@@ -96,8 +97,9 @@ export function StaffSidebar({ className = "" }: StaffSidebarProps) {
         )}
       </nav>
 
-      <div className="border-t border-white/10 p-3">
+      <div className="space-y-2 border-t border-white/10 p-3">
         <LanguageSwitcher />
+        <LogoutButton />
       </div>
     </div>
   );
