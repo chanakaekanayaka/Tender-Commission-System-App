@@ -8,6 +8,8 @@ export async function GET() {
       success: true,
       message: "MongoDB connection is healthy",
       readyState: mongooseInstance.connection.readyState,
+      // Surfaced so a wrong/missing db name in MONGODB_URI (e.g. defaulting to "test") is obvious at a glance.
+      database: mongooseInstance.connection.name,
     });
   } catch (error) {
     return NextResponse.json(
