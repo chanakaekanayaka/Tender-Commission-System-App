@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db/connectDB";
 
+// Otherwise Next.js can statically optimize this GET handler at build time since it has no
+// request-dependent input — a diagnostic route needs to run fresh on every hit, not serve a cached result.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const mongooseInstance = await connectDB();
