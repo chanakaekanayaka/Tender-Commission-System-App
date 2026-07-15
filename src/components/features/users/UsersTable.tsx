@@ -18,13 +18,14 @@ function restrictedCount(user: User) {
   return Object.values(user.permissions).filter((allowed) => !allowed).length;
 }
 
-/** Mock-only list: Edit opens the shared UserForm in a Modal, Block/Unblock opens a confirm Modal that flips the row's status. Row mutations only live for the component's lifetime — no backend wired up yet (AGENTS.md). */
+/** Edit opens the shared UserForm in a Modal, Block/Unblock opens a confirm Modal — both PATCH /api/users/:id and update the row from the server's response on success. */
 export function UsersTable({ initialData }: UsersTableProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -37,15 +38,38 @@ export function UsersTable({ initialData }: UsersTableProps) {
   const statusTargetUser = rows.find((row) => row.id === statusTargetId) ?? null;
   const nextStatus = statusTargetUser?.status === "Active" ? "Blocked" : "Active";
 
-  const handleUpdate = (values: UserFormValues) => {
-    setRows((prev) => prev.map((row) => (row.id === editingId ? { ...row, ...values } : row)));
+  const handleUpdate = async (values: UserFormValues) => {
+    const res = await fetch(`/api/users/${editingId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    });
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      // Thrown so UserForm's handleSubmit catches it and renders it inline instead of closing the modal.
+      throw new Error(result.message ?? "Failed to update user.");
+    }
+
+    setRows((prev) => prev.map((row) => (row.id === editingId ? result.data : row)));
     setEditingId(null);
   };
 
-  const handleConfirmStatusChange = () => {
-    setRows((prev) =>
-      prev.map((row) => (row.id === statusTargetId ? { ...row, status: nextStatus } : row)),
-    );
+  const handleConfirmStatusChange = async () => {
+    setStatusError(null);
+    const res = await fetch(`/api/users/${statusTargetId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      setStatusError(result.message ?? "Failed to update status.");
+      return;
+    }
+
+    setRows((prev) => prev.map((row) => (row.id === statusTargetId ? result.data : row)));
     setStatusTargetId(null);
   };
 
@@ -132,7 +156,10 @@ export function UsersTable({ initialData }: UsersTableProps) {
 
       <Modal
         open={statusTargetUser !== null}
-        onClose={() => setStatusTargetId(null)}
+        onClose={() => {
+          setStatusTargetId(null);
+          setStatusError(null);
+        }}
         title={nextStatus === "Blocked" ? t("usersList.blockConfirmTitle") : t("usersList.unblockConfirmTitle")}
       >
         {statusTargetUser && (
@@ -142,10 +169,14 @@ export function UsersTable({ initialData }: UsersTableProps) {
                 name: `${statusTargetUser.firstName} ${statusTargetUser.lastName}`,
               })}
             </p>
+            {statusError && <p className="text-sm text-red-600">{statusError}</p>}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setStatusTargetId(null)}
+                onClick={() => {
+                  setStatusTargetId(null);
+                  setStatusError(null);
+                }}
                 className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
               >
                 {t("common.cancel")}

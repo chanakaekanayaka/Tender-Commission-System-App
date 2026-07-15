@@ -1,8 +1,14 @@
 import { T } from "@/components/features/i18n/T";
 import { UsersTable } from "@/components/features/users/UsersTable";
-import { users } from "@/lib/mock/users.mock";
+import connectDB from "@/lib/db/connectDB";
+import { UserModel } from "@/lib/db/models/User.model";
+import type { User } from "@/shared/types/user.types";
 
-export default function AdminUsersPage() {
+export default async function AdminUsersPage() {
+  await connectDB();
+  const users = await UserModel.find().sort({ createdAt: -1 });
+  const initialData = users.map((user) => user.toJSON()) as unknown as User[];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -11,7 +17,7 @@ export default function AdminUsersPage() {
         </h1>
       </div>
 
-      <UsersTable initialData={users} />
+      <UsersTable initialData={initialData} />
     </div>
   );
 }

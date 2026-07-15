@@ -3,9 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
-const MOCK_ROUTES: Record<string, string> = {
-  "admin@test.com": "/admin/dashboard",
-  "staff@test.com": "/staff/dashboard",
+const ROLE_HOME: Record<string, string> = {
+  Admin: "/admin/dashboard",
+  Staff: "/staff/dashboard",
 };
 
 export function LoginForm() {
@@ -13,18 +13,32 @@ export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    const destination = MOCK_ROUTES[email.trim().toLowerCase()];
-    if (!destination) {
-      setError("Unrecognized email. Try admin@test.com or staff@test.com.");
-      return;
-    }
-
     setError(null);
-    router.push(destination);
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setError(result.message ?? "Login failed. Please try again.");
+        return;
+      }
+
+      router.push(ROLE_HOME[result.data.role] ?? "/login");
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -35,7 +49,7 @@ export function LoginForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@test.com"
+          placeholder="you@example.com"
           required
           className="mt-1 w-full rounded-none border border-border bg-surface px-3 py-2 text-ink"
         />
@@ -57,9 +71,10 @@ export function LoginForm() {
 
       <button
         type="submit"
-        className="w-full rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink"
+        disabled={isSubmitting}
+        className="w-full rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Log In
+        {isSubmitting ? "Logging in…" : "Log In"}
       </button>
     </form>
   );
