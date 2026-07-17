@@ -1,14 +1,19 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
 import type { UserRole } from "@/shared/types/user.types";
 
-// Annotated as `string` (rather than relying on a narrowing `if` before use) so the type holds
-// inside the functions below too — TS doesn't carry narrowing across closure boundaries.
-const JWT_SECRET: string = (() => {
+// Read lazily (inside the functions below), not at module-evaluation time: on AWS Amplify Hosting's
+// Next.js compute, environment variables aren't reliably attached yet at the point shared server
+// chunks first get evaluated — a top-level `process.env.JWT_SECRET` read there can throw even though
+// the variable is correctly set. Reading it once each function actually runs avoids that.
+function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("Missing JWT_SECRET environment variable — set it in .env.local");
   return secret;
-})();
-const JWT_EXPIRES_IN = (process.env.JWT_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"];
+}
+
+function getJwtExpiresIn(): SignOptions["expiresIn"] {
+  return (process.env.JWT_EXPIRES_IN ?? "7d") as SignOptions["expiresIn"];
+}
 
 export interface AuthTokenPayload {
   userId: string;
@@ -16,13 +21,13 @@ export interface AuthTokenPayload {
 }
 
 export function signAuthToken(payload: AuthTokenPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: getJwtExpiresIn() });
 }
 
 /** Returns null instead of throwing so callers can treat "missing" and "invalid" tokens the same way. */
 export function verifyAuthToken(token: string): AuthTokenPayload | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthTokenPayload;
+    return jwt.verify(token, getJwtSecret()) as AuthTokenPayload;
   } catch {
     return null;
   }

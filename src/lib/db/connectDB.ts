@@ -1,12 +1,15 @@
 import mongoose from "mongoose";
 
-// Annotated as `string` so the type holds inside connectDB() below — TS doesn't carry
-// narrowing from an `if` guard across closure boundaries.
-const MONGODB_URI: string = (() => {
+// Read lazily (called from connectDB() below), not at module-evaluation time: on AWS Amplify
+// Hosting's Next.js compute, environment variables aren't reliably attached yet at the point
+// shared server chunks first get evaluated - a top-level process.env.MONGODB_URI read there
+// can throw even though the variable is correctly set. Reading it once connectDB() actually
+// runs avoids that.
+function getMongoUri(): string {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error("Missing MONGODB_URI environment variable — set it in .env.local");
   return uri;
-})();
+}
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -33,7 +36,7 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    cached.promise = mongoose.connect(getMongoUri(), {
       bufferCommands: false,
     });
   }
