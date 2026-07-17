@@ -1,6 +1,6 @@
 "use client";
 
-import { DocumentDropzone } from "@/components/features/tenders/DocumentDropzone";
+import { JobOrderDocumentDropzone } from "@/components/features/job-orders/JobOrderDocumentDropzone";
 import { AssignStaffSelect } from "@/components/features/job-orders/AssignStaffSelect";
 import { JobOrderLineItemsTable } from "@/components/features/job-orders/JobOrderLineItemsTable";
 import { JobOrderMetadataForm } from "@/components/features/job-orders/JobOrderMetadataForm";
@@ -45,7 +45,7 @@ export function JobOrderStepCreate() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
         <div className="space-y-2">
-          <DocumentDropzone onParse={handleParse} isParsing={isParsing} />
+          <JobOrderDocumentDropzone onParse={handleParse} isParsing={isParsing} />
           {!procurementNo && (
             <p className="text-xs text-muted">{t("jobOrderCreate.selectProcurementFirst")}</p>
           )}

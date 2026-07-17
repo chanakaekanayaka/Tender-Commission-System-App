@@ -4,23 +4,29 @@ import { Image as ImageIcon } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
+import { Toggle } from "@/components/ui/Toggle";
 import { useTheme } from "@/context/ThemeProvider";
 import { useTranslation } from "@/context/LanguageContext";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import type { SystemConfig as SystemConfigValues } from "@/shared/types/system-config.types";
 
+interface SystemConfigProps {
+  initialValues: SystemConfigValues;
+}
+
 /**
- * Company Name / VAT Percentage / Logo are mock-saved fields only — nothing
- * else in the app reads them yet. Theme Color is the one field with a real,
- * live effect: on submit it's handed to ThemeProvider, which repaints the
- * sidebar on both portals immediately (see ThemeProvider.tsx).
+ * VAT Registered / VAT Percentage are real, backed by PATCH /api/system-config. Company Name /
+ * Logo / Payment Due Period are still mock-saved fields — nothing else in the app reads them yet.
+ * Theme Color is the one other field with a real, live effect: on submit it's handed to
+ * ThemeProvider, which repaints the sidebar on both portals immediately (see ThemeProvider.tsx).
  */
-export function SystemConfig() {
+export function SystemConfig({ initialValues }: SystemConfigProps) {
   const { t } = useTranslation();
   const { setSidebarColor } = useTheme();
-  const [values, setValues] = useState<SystemConfigValues>(defaultSystemConfig);
+  const [values, setValues] = useState<SystemConfigValues>(initialValues);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,12 +43,33 @@ export function SystemConfig() {
     update("logoFileName", file.name);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: PATCH /api/system-config once that route exists — UI-only mock phase (AGENTS.md).
-    console.log("Save system config", values);
-    setSidebarColor(values.themeColor);
-    setSavedAt(Date.now());
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      const res = await fetch("/api/system-config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isVatRegistered: values.isVatRegistered,
+          vatPercentage: values.vatPercentage,
+        }),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to save system config.");
+      }
+
+      setSidebarColor(values.themeColor);
+      setSavedAt(Date.now());
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save system config.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -63,6 +90,7 @@ export function SystemConfig() {
             max={100}
             step={1}
             suffix="%"
+            disabled={!values.isVatRegistered}
           />
           <FormField
             label={t("systemConfig.paymentDueDays")}
@@ -72,6 +100,13 @@ export function SystemConfig() {
             min={0}
             step={1}
             suffix={t("systemConfig.paymentDueDaysSuffix")}
+          />
+        </div>
+        <div className="mt-4">
+          <Toggle
+            label={t("systemConfig.vatRegistered")}
+            checked={values.isVatRegistered}
+            onChange={(checked) => update("isVatRegistered", checked)}
           />
         </div>
         <p className="mt-3 text-xs text-muted">{t("systemConfig.paymentDueDaysHint")}</p>
@@ -135,9 +170,15 @@ export function SystemConfig() {
         </div>
       </Card>
 
+      {saveError && <p className="text-sm text-ink">{saveError}</p>}
+
       <div className="flex flex-wrap items-center justify-end gap-3">
         {savedAt && <span className="text-xs text-muted">{t("systemConfig.saved")}</span>}
-        <button type="submit" className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink">
+        <button
+          type="submit"
+          disabled={isSaving}
+          className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
+        >
           {t("systemConfig.save")}
         </button>
       </div>

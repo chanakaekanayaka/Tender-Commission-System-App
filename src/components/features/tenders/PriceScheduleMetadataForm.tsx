@@ -2,13 +2,18 @@ import type { ReactNode } from "react";
 import { T } from "@/components/features/i18n/T";
 import type { PriceScheduleMetadata } from "@/shared/types/tender.types";
 
+type EditableField = "procurementNo" | "procurementTitle" | "procuringEntity" | "closingDate";
+
 interface FieldProps {
   label: ReactNode;
   value: string;
   required?: boolean;
+  readOnly?: boolean;
+  type?: "text" | "date";
+  onChange?: (value: string) => void;
 }
 
-function Field({ label, value, required }: FieldProps) {
+function Field({ label, value, required, readOnly = false, type = "text", onChange }: FieldProps) {
   return (
     <label className="block text-sm">
       <span className="text-muted">
@@ -16,10 +21,13 @@ function Field({ label, value, required }: FieldProps) {
         {required && <span className="text-ink"> *</span>}
       </span>
       <input
-        type="text"
+        type={type}
         value={value}
-        readOnly
-        className="mt-1 block w-full rounded-none border border-border bg-surface px-3 py-2 text-muted"
+        readOnly={readOnly}
+        onChange={(e) => onChange?.(e.target.value)}
+        className={`mt-1 block w-full rounded-none border border-border px-3 py-2 ${
+          readOnly ? "bg-surface text-muted" : "bg-card text-ink"
+        }`}
       />
     </label>
   );
@@ -31,9 +39,12 @@ function Row({ children }: { children: ReactNode }) {
 
 interface PriceScheduleMetadataFormProps {
   values: PriceScheduleMetadata;
+  onChange: (field: EditableField, value: string) => void;
 }
 
-export function PriceScheduleMetadataForm({ values }: PriceScheduleMetadataFormProps) {
+/** OCR extraction is best-effort (cheapest Textract tier, varying tender doc layouts) — every field
+ *  except the system-generated Uploading Date must be editable so mistakes are correctable. */
+export function PriceScheduleMetadataForm({ values, onChange }: PriceScheduleMetadataFormProps) {
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
@@ -42,15 +53,33 @@ export function PriceScheduleMetadataForm({ values }: PriceScheduleMetadataFormP
 
       <div className="space-y-4">
         <Row>
-          <Field label={<T k="common.procurementNo" />} value={values.procurementNo} required />
-          <Field label={<T k="metadataForm.procurementTitle" />} value={values.procurementTitle} />
+          <Field
+            label={<T k="common.procurementNo" />}
+            value={values.procurementNo}
+            required
+            onChange={(v) => onChange("procurementNo", v)}
+          />
+          <Field
+            label={<T k="metadataForm.procurementTitle" />}
+            value={values.procurementTitle}
+            onChange={(v) => onChange("procurementTitle", v)}
+          />
         </Row>
         <Row>
-          <Field label={<T k="common.procuringEntity" />} value={values.procuringEntity} />
-          <Field label={<T k="common.closingDate" />} value={values.closingDate} />
+          <Field
+            label={<T k="common.procuringEntity" />}
+            value={values.procuringEntity}
+            onChange={(v) => onChange("procuringEntity", v)}
+          />
+          <Field
+            label={<T k="common.closingDate" />}
+            value={values.closingDate}
+            type="date"
+            onChange={(v) => onChange("closingDate", v)}
+          />
         </Row>
         <Row>
-          <Field label={<T k="metadataForm.uploadingDate" />} value={values.uploadingDate} />
+          <Field label={<T k="metadataForm.uploadingDate" />} value={values.uploadingDate} readOnly />
         </Row>
       </div>
     </div>

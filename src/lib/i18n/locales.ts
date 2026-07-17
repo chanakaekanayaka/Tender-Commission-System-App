@@ -54,6 +54,8 @@ export const en = {
   "tenders.createHeading": "New Price Schedule",
   "tenders.saveDraft": "Save Draft",
   "tenders.savePriceSchedule": "Save Price Schedule →",
+  "tenders.draftSaved": "Draft saved.",
+  "tenders.priceScheduleSaved": "Price Schedule saved.",
 
   // Price Schedule — Source Document dropzone
   "dropzone.sourceDocument": "Source Document",
@@ -67,12 +69,13 @@ export const en = {
   "dropzone.parsing": "Parsing…",
 
   // Price Schedule — Metadata form
-  "metadataForm.heading": "Metadata (auto-filled by AI · read-only)",
+  "metadataForm.heading": "Metadata (auto-filled by AI · review and correct before saving)",
   "metadataForm.procurementTitle": "Procurement Title",
   "metadataForm.uploadingDate": "Uploading Date",
 
   // Price Schedule — Line items
-  "lineItems.heading": "Line Items (AI-extracted)",
+  "lineItems.heading": "Line Items (AI-extracted · review and correct before saving)",
+  "lineItems.addRow": "Add row",
   "lineItems.itemDescription": "Item Description",
   "lineItems.qty": "Qty",
   "lineItems.unitPrice": "Unit Price",
@@ -308,6 +311,7 @@ export const en = {
   "systemConfig.detailsHeading": "Company Details",
   "systemConfig.companyName": "Company Name",
   "systemConfig.vatPercentage": "VAT Percentage",
+  "systemConfig.vatRegistered": "VAT Registered",
   "systemConfig.logoHeading": "Logo",
   "systemConfig.chooseLogo": "Choose Logo",
   "systemConfig.noLogoChosen": "No logo chosen",
@@ -459,6 +463,8 @@ export const si: Record<TranslationKey, string> = {
   "tenders.createHeading": "නව මිල ලේඛනය",
   "tenders.saveDraft": "කෙටුම්පත සුරකින්න",
   "tenders.savePriceSchedule": "මිල ලේඛනය සුරකින්න →",
+  "tenders.draftSaved": "කෙටුම්පත සුරකින ලදී.",
+  "tenders.priceScheduleSaved": "මිල ලේඛනය සුරකින ලදී.",
 
   "dropzone.sourceDocument": "මූලාශ්‍ර ලේඛනය",
   "dropzone.dropHere": "ටෙන්ඩර් ලේඛනය මෙහි දමන්න",
@@ -470,11 +476,12 @@ export const si: Record<TranslationKey, string> = {
   "dropzone.parse": "විශ්ලේෂණය කරන්න",
   "dropzone.parsing": "විශ්ලේෂණය කරමින්…",
 
-  "metadataForm.heading": "පාර්ශ්ව දත්ත (AI මගින් ස්වයංක්‍රීයව පුරවා ඇත · කියවීමට පමණි)",
+  "metadataForm.heading": "පාර්ශ්ව දත්ත (AI මගින් ස්වයංක්‍රීයව පුරවා ඇත · සුරැකීමට පෙර සමාලෝචනය කර නිවැරදි කරන්න)",
   "metadataForm.procurementTitle": "ප්‍රසම්පාදන මාතෘකාව",
   "metadataForm.uploadingDate": "උඩුගත කළ දිනය",
 
-  "lineItems.heading": "අයිතම (AI-උපුටාගත්)",
+  "lineItems.heading": "අයිතම (AI-උපුටාගත් · සුරැකීමට පෙර සමාලෝචනය කර නිවැරදි කරන්න)",
+  "lineItems.addRow": "පේළියක් එකතු කරන්න",
   "lineItems.itemDescription": "අයිතම විස්තරය",
   "lineItems.qty": "ප්‍රමාණය",
   "lineItems.unitPrice": "ඒකක මිල",
@@ -701,6 +708,7 @@ export const si: Record<TranslationKey, string> = {
   "systemConfig.detailsHeading": "සමාගම් විස්තර",
   "systemConfig.companyName": "සමාගමේ නම",
   "systemConfig.vatPercentage": "වැට් ප්‍රතිශතය",
+  "systemConfig.vatRegistered": "වැට් ලියාපදිංචි කර ඇත",
   "systemConfig.logoHeading": "ලාංඡනය",
   "systemConfig.chooseLogo": "ලාංඡනය තෝරන්න",
   "systemConfig.noLogoChosen": "ලාංඡනයක් තෝරාගෙන නැත",

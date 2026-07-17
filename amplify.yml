@@ -11,7 +11,7 @@ frontend:
         # runtime unless they're written into .env.production during the build, which is what
         # Next.js's own runtime env loading reads from.
         # https://docs.aws.amazon.com/amplify/latest/userguide/ssr-environment-variables.html
-        - env | grep -e MONGODB_URI -e JWT_SECRET -e JWT_EXPIRES_IN >> .env.production
+        - env | grep -e MONGODB_URI -e JWT_SECRET -e JWT_EXPIRES_IN -e S3_BUCKET_NAME >> .env.production
         - npm run build
   artifacts:
     baseDirectory: .next

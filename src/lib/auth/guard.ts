@@ -20,3 +20,13 @@ export function requireRole(request: NextRequest, role: UserRole): GuardResult {
   }
   return { payload, error: null };
 }
+
+/** Same as requireRole but for routes open to any authenticated role (e.g. Price Schedules —
+ *  both Admin and Staff can create/view their own, per AI_INSTRUCTIONS.md §3). */
+export function requireAuth(request: NextRequest): GuardResult {
+  const payload = getAuthPayloadFromRequest(request);
+  if (!payload) {
+    return { payload: null, error: apiError("Not authenticated.", 401) };
+  }
+  return { payload, error: null };
+}
