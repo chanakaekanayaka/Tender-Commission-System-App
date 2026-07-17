@@ -14,6 +14,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect("/login");
   }
 
+  // Cross-portal guard: a Staff account hitting /admin/* gets bounced to their own dashboard
+  // instead of a blank/forbidden page. (Moved here from proxy.ts — see proxy.ts for why.)
+  if (user.role !== "Admin") {
+    redirect("/staff/dashboard");
+  }
+
   return (
     <LanguageProvider>
       <DashboardLayout sidebar={<AdminSidebar />}>{children}</DashboardLayout>

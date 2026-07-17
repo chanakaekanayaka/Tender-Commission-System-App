@@ -1,24 +1,21 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getAuthPayloadFromRequest } from "@/lib/auth/cookies";
+import { AUTH_COOKIE_NAME } from "@/lib/auth/cookieName";
 
 // Next.js 16 renamed `middleware.ts` to `proxy.ts` — same file, same job (runs before the route renders).
+//
+// This only checks that the auth cookie is *present* — it deliberately does not verify the JWT
+// signature (that needs JWT_SECRET, which AWS Amplify Hosting's Middleware/Edge compute does not
+// receive, unlike the main SSR compute and API routes). Real verification + role enforcement
+// happens server-side instead: AdminLayout/StaffLayout call getCurrentUser() (full JWT verify + DB
+// lookup, including the cross-portal bounce), and every API route calls requireRole/requireAuth.
+// Both run in the main compute, where env vars are available. This is just a cheap first gate to
+// bounce anonymous visitors to /login before a page even renders.
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const payload = getAuthPayloadFromRequest(request);
+  const hasAuthCookie = Boolean(request.cookies.get(AUTH_COOKIE_NAME)?.value);
 
-  if (!payload) {
+  if (!hasAuthCookie) {
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Cross-portal guard: a Staff JWT hitting /admin/* (or vice versa) gets bounced to their own dashboard
-  // instead of a blank/forbidden page.
-  if (pathname.startsWith("/admin") && payload.role !== "Admin") {
-    return NextResponse.redirect(new URL("/staff/dashboard", request.url));
-  }
-
-  if (pathname.startsWith("/staff") && payload.role !== "Staff") {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return NextResponse.next();

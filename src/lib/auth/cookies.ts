@@ -1,7 +1,8 @@
 import type { NextRequest, NextResponse } from "next/server";
 import { verifyAuthToken, type AuthTokenPayload } from "@/lib/auth/jwt";
+import { AUTH_COOKIE_NAME } from "@/lib/auth/cookieName";
 
-export const AUTH_COOKIE_NAME = "auth_token";
+export { AUTH_COOKIE_NAME };
 
 const COOKIE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days — keep in sync with JWT_EXPIRES_IN
 
