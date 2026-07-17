@@ -1,0 +1,23 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # AWS Amplify Hosting only injects console-configured environment variables into the
+        # BUILD phase by default — Next.js server components/API routes don't see them at
+        # runtime unless they're written into .env.production during the build, which is what
+        # Next.js's own runtime env loading reads from.
+        # https://docs.aws.amazon.com/amplify/latest/userguide/ssr-environment-variables.html
+        - env | grep -e MONGODB_URI -e JWT_SECRET -e JWT_EXPIRES_IN >> .env.production
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
