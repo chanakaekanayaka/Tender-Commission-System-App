@@ -97,27 +97,67 @@ function getCellText(cell: Block, blockById: Map<string, Block>): string {
     .trim();
 }
 
-const HEADER_KEYWORDS = {
-  item: ["item", "description", "particular"],
-  qty: ["qty", "quantity"],
-  unitPrice: ["price", "rate", "amount", "unit"],
-};
-
-function matchesColumn(headerText: string, keywords: string[]): boolean {
-  const normalized = headerText.toLowerCase();
-  return keywords.some((kw) => normalized.includes(kw));
-}
-
 function parseNumber(text: string): number {
   const cleaned = text.replace(/[^0-9.]/g, "");
   const value = parseFloat(cleaned);
   return Number.isFinite(value) ? value : 0;
 }
 
-/** Best-effort table -> line-item extraction. Guesses which column is Item/Qty/Unit Price by header
- *  keyword match, falling back to column order (1st/2nd/3rd) when headers aren't recognized. This is
- *  inherently heuristic — the cheapest Textract tier and the wide variety of real tender document
- *  layouts mean misreads happen; the UI must let the user correct results before saving. */
+/** Reconstructs a TABLE block's CELL children into a { rowIndex -> { colIndex -> text } } grid,
+ *  plus the highest column index seen. Shared by both line-item and key/value table extraction. */
+function buildTableGrid(table: Block, blockById: Map<string, Block>) {
+  const cells = getChildBlocks(table, blockById, "CELL");
+  const rows = new Map<number, Map<number, string>>();
+  let maxCol = 0;
+
+  for (const cell of cells) {
+    const rowIndex = cell.RowIndex ?? 0;
+    const colIndex = cell.ColumnIndex ?? 0;
+    maxCol = Math.max(maxCol, colIndex);
+    const row = rows.get(rowIndex) ?? new Map<number, string>();
+    row.set(colIndex, getCellText(cell, blockById));
+    rows.set(rowIndex, row);
+  }
+
+  const rowIndices = [...rows.keys()].sort((a, b) => a - b);
+  return { rows, rowIndices, maxCol };
+}
+
+// A row like "1  2  3  8=5*7  11=8+9-10" (pure column indices / spreadsheet-style formula refs,
+// no words) — some tender templates print this above the real text header row. Detecting it lets
+// us skip straight to the row that actually says "Item No / Description / Qty / Unit Price".
+function looksLikeColumnIndexRow(row: Map<number, string>, maxCol: number): boolean {
+  let nonEmpty = 0;
+  let indexLike = 0;
+  for (let col = 1; col <= maxCol; col++) {
+    const text = (row.get(col) ?? "").trim();
+    if (!text) continue;
+    nonEmpty += 1;
+    if (/^\d+(\s*=[\d+\-*/.\s]+)?$/.test(text)) indexLike += 1;
+  }
+  return nonEmpty > 0 && indexLike / nonEmpty >= 0.6;
+}
+
+function findColumn(
+  headerRow: Map<number, string>,
+  maxCol: number,
+  keywords: string[],
+  used: Set<number>,
+): number | null {
+  for (let col = 1; col <= maxCol; col++) {
+    if (used.has(col)) continue;
+    const text = (headerRow.get(col) ?? "").toLowerCase();
+    if (keywords.some((kw) => text.includes(kw))) return col;
+  }
+  return null;
+}
+
+/** Best-effort table -> line-item extraction. Skips tables with fewer than 3 columns (those are
+ *  almost always a label/value metadata table, like eGP Sri Lanka's "Primary Details" block, not
+ *  an item table). Guesses which column is Item/Qty/Unit Price by header keyword match — checking
+ *  "description" before the more generic "item" so a leading "Item No" (row number) column doesn't
+ *  win over the actual description column — falling back to column order when headers aren't
+ *  recognized at all. This is inherently heuristic; the UI must let the user correct results. */
 export function extractLineItemsFromTables(blocks: Block[]): PriceScheduleLineItem[] {
   const blockById = buildBlockIndex(blocks);
   const tables = blocks.filter((b) => b.BlockType === "TABLE");
@@ -125,38 +165,31 @@ export function extractLineItemsFromTables(blocks: Block[]): PriceScheduleLineIt
   let idCounter = 0;
 
   for (const table of tables) {
-    const cells = getChildBlocks(table, blockById, "CELL");
-    if (cells.length === 0) continue;
+    const { rows, rowIndices, maxCol } = buildTableGrid(table, blockById);
+    if (maxCol < 3) continue; // 1-2 column tables are key/value metadata, not line items
 
-    const rows = new Map<number, Map<number, string>>();
-    let maxCol = 0;
-    for (const cell of cells) {
-      const rowIndex = cell.RowIndex ?? 0;
-      const colIndex = cell.ColumnIndex ?? 0;
-      maxCol = Math.max(maxCol, colIndex);
-      const row = rows.get(rowIndex) ?? new Map<number, string>();
-      row.set(colIndex, getCellText(cell, blockById));
-      rows.set(rowIndex, row);
-    }
+    // Some templates print a plain column-index row above the real text header — skip it if found.
+    const headerRowCount = rowIndices.length > 1 && looksLikeColumnIndexRow(rows.get(rowIndices[0])!, maxCol) ? 2 : 1;
+    if (rowIndices.length <= headerRowCount) continue; // needs at least 1 data row after the header(s)
 
-    const rowIndices = [...rows.keys()].sort((a, b) => a - b);
-    if (rowIndices.length < 2) continue; // needs at least a header + 1 data row
+    const headerRow = rows.get(rowIndices[headerRowCount - 1])!;
+    const used = new Set<number>();
 
-    const headerRow = rows.get(rowIndices[0])!;
-    let itemCol: number | null = null;
-    let qtyCol: number | null = null;
-    let unitPriceCol: number | null = null;
-    for (let col = 1; col <= maxCol; col++) {
-      const headerText = headerRow.get(col) ?? "";
-      if (itemCol === null && matchesColumn(headerText, HEADER_KEYWORDS.item)) itemCol = col;
-      else if (qtyCol === null && matchesColumn(headerText, HEADER_KEYWORDS.qty)) qtyCol = col;
-      else if (unitPriceCol === null && matchesColumn(headerText, HEADER_KEYWORDS.unitPrice)) unitPriceCol = col;
-    }
+    let itemCol = findColumn(headerRow, maxCol, ["description"], used);
+    if (itemCol === null) itemCol = findColumn(headerRow, maxCol, ["item", "particular"], used);
+    if (itemCol !== null) used.add(itemCol);
+
+    let qtyCol = findColumn(headerRow, maxCol, ["qty", "quantity"], used);
+    if (qtyCol !== null) used.add(qtyCol);
+
+    let unitPriceCol = findColumn(headerRow, maxCol, ["unit price", "price", "rate", "amount"], used);
+    if (unitPriceCol !== null) used.add(unitPriceCol);
+
     if (itemCol === null) itemCol = 1;
     if (qtyCol === null) qtyCol = 2;
     if (unitPriceCol === null) unitPriceCol = 3;
 
-    for (const rowIndex of rowIndices.slice(1)) {
+    for (const rowIndex of rowIndices.slice(headerRowCount)) {
       const row = rows.get(rowIndex)!;
       const itemText = row.get(itemCol) ?? "";
       if (!itemText) continue;
@@ -242,4 +275,63 @@ export function extractMetadataFromLines(blocks: Block[]): ExtractedMetadata {
   }
 
   return result;
+}
+
+const TABLE_LABEL_ALIASES: Record<keyof ExtractedMetadata, string[]> = {
+  // "IFe-Q Number" is the Sri Lanka eGP portal's own term for the procurement reference.
+  procurementNo: ["ife-q number", "ifb number", "procurement no", "procurement number", "tender no", "bid no"],
+  procurementTitle: ["title of the procurement", "procurement title", "title"],
+  // "Name of the PE" — "PE" = Procuring Entity, eGP's usual abbreviation.
+  procuringEntity: ["name of the pe", "procuring entity", "name of the procuring entity", "entity"],
+  closingDate: ["closing date"],
+};
+
+function matchLabel(label: string): keyof ExtractedMetadata | null {
+  const normalized = label.toLowerCase().trim();
+  for (const [field, aliases] of Object.entries(TABLE_LABEL_ALIASES) as [keyof ExtractedMetadata, string[]][]) {
+    if (aliases.some((alias) => normalized.includes(alias))) return field;
+  }
+  return null;
+}
+
+/** Recovers metadata from 2-column label/value tables (e.g. eGP Sri Lanka's "Primary Details"
+ *  block) — more reliable than line-text regex when a document structures fields this way, since
+ *  the label and value live in separate cells rather than one "label: value" line of text. */
+function extractMetadataFromTables(blocks: Block[]): ExtractedMetadata {
+  const blockById = buildBlockIndex(blocks);
+  const tables = blocks.filter((b) => b.BlockType === "TABLE");
+  const result: ExtractedMetadata = {};
+
+  for (const table of tables) {
+    const { rows, rowIndices, maxCol } = buildTableGrid(table, blockById);
+    if (maxCol !== 2) continue; // label | value tables only
+
+    for (const rowIndex of rowIndices) {
+      const row = rows.get(rowIndex)!;
+      const label = (row.get(1) ?? "").trim();
+      const value = (row.get(2) ?? "").trim();
+      if (!label || !value) continue;
+
+      const field = matchLabel(label);
+      if (!field || result[field]) continue;
+
+      if (field === "closingDate") {
+        const iso = parseDateToISO(value);
+        if (iso) result.closingDate = iso;
+      } else {
+        result[field] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Combines table-based (checked first — more reliable when the document actually uses a
+ *  label/value table) and line-regex metadata extraction, filling any still-missing field from
+ *  whichever source found it. */
+export function extractMetadata(blocks: Block[]): ExtractedMetadata {
+  const fromLines = extractMetadataFromLines(blocks);
+  const fromTables = extractMetadataFromTables(blocks);
+  return { ...fromLines, ...fromTables };
 }

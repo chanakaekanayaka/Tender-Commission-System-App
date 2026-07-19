@@ -6,7 +6,7 @@ import {
   startTableAnalysis,
   pollDocumentAnalysis,
   extractLineItemsFromTables,
-  extractMetadataFromLines,
+  extractMetadata,
   TextractTimeoutError,
 } from "@/lib/aws/textract";
 import { apiError, apiSuccess } from "@/lib/api/response";
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const blocks = await pollDocumentAnalysis(jobId);
 
     const lineItems = extractLineItemsFromTables(blocks);
-    const metadata = extractMetadataFromLines(blocks);
+    const metadata = extractMetadata(blocks);
 
     return apiSuccess(
       { metadata, lineItems, sourceDocument: { s3Key: key, fileName: file.name } },
