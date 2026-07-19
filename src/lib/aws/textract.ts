@@ -135,29 +135,40 @@ const HEADER_HINT_KEYWORDS = [
   "amount",
 ];
 
+function scoreHeaderRow(row: Map<number, string>, maxCol: number): number {
+  let score = 0;
+  for (let col = 1; col <= maxCol; col++) {
+    const text = (row.get(col) ?? "").toLowerCase();
+    if (HEADER_HINT_KEYWORDS.some((kw) => text.includes(kw))) score += 1;
+  }
+  return score;
+}
+
 /** Scans the first few rows of a table grid for the one that most looks like a real column header
  *  (matches the most keyword hints), instead of assuming the header is always row 0 or 1 — real
  *  documents often print a title row, a note row ("All prices are in LKR"), and/or a plain
- *  column-index row ("1 2 3 ... 8=5*7 ...") above the actual text header. */
-function findHeaderRowIndex(rows: Map<number, Map<number, string>>, rowIndices: number[], maxCol: number): number {
+ *  column-index row ("1 2 3 ... 8=5*7 ...") above the actual text header. Returns a score of 0
+ *  when nothing in the scanned rows looks like a header at all (e.g. a continuation table on a
+ *  later page, which repeats no header of its own) so the caller can tell a "found nothing" 0 from
+ *  a genuine index-0 header. */
+function findHeaderRowIndex(
+  rows: Map<number, Map<number, string>>,
+  rowIndices: number[],
+  maxCol: number,
+): { index: number; score: number } {
   const rowsToCheck = Math.min(5, rowIndices.length);
   let bestIndex = 0;
   let bestScore = 0;
 
   for (let i = 0; i < rowsToCheck; i++) {
-    const row = rows.get(rowIndices[i])!;
-    let score = 0;
-    for (let col = 1; col <= maxCol; col++) {
-      const text = (row.get(col) ?? "").toLowerCase();
-      if (HEADER_HINT_KEYWORDS.some((kw) => text.includes(kw))) score += 1;
-    }
+    const score = scoreHeaderRow(rows.get(rowIndices[i])!, maxCol);
     if (score > bestScore) {
       bestScore = score;
       bestIndex = i;
     }
   }
 
-  return bestIndex;
+  return { index: bestIndex, score: bestScore };
 }
 
 function findColumn(
@@ -178,39 +189,73 @@ function findColumn(
  *  almost always a label/value metadata table, like eGP Sri Lanka's "Primary Details" block, not
  *  an item table). Guesses which column is Item/Qty/Unit Price by header keyword match — checking
  *  "description" before the more generic "item" so a leading "Item No" (row number) column doesn't
- *  win over the actual description column — falling back to column order when headers aren't
- *  recognized at all. This is inherently heuristic; the UI must let the user correct results. */
+ *  win over the actual description column.
+ *
+ *  Multi-page tender documents are frequently split by Textract into one TABLE block per page,
+ *  where only the first page's table carries the header row — later pages are pure continuation
+ *  data with the same columns but no header of their own to detect. The column mapping found from
+ *  the most recent real header is carried forward across tables so those headerless continuation
+ *  fragments still map to the right fields instead of falling back to column order.
+ *
+ *  This is inherently heuristic; the UI must let the user correct results before saving. */
 export function extractLineItemsFromTables(blocks: Block[]): PriceScheduleLineItem[] {
   const blockById = buildBlockIndex(blocks);
   const tables = blocks.filter((b) => b.BlockType === "TABLE");
   const lineItems: PriceScheduleLineItem[] = [];
   let idCounter = 0;
 
+  let knownItemCol: number | null = null;
+  let knownQtyCol: number | null = null;
+  let knownUnitPriceCol: number | null = null;
+
   for (const table of tables) {
     const { rows, rowIndices, maxCol } = buildTableGrid(table, blockById);
     if (maxCol < 3) continue; // 1-2 column tables are key/value metadata, not line items
 
-    const headerIndex = findHeaderRowIndex(rows, rowIndices, maxCol);
-    if (rowIndices.length <= headerIndex + 1) continue; // needs at least 1 data row after the header
+    const header = findHeaderRowIndex(rows, rowIndices, maxCol);
+    let itemCol: number;
+    let qtyCol: number;
+    let unitPriceCol: number;
+    let dataStartIndex: number;
 
-    const headerRow = rows.get(rowIndices[headerIndex])!;
-    const used = new Set<number>();
+    if (header.score > 0) {
+      const headerRow = rows.get(rowIndices[header.index])!;
+      const used = new Set<number>();
 
-    let itemCol = findColumn(headerRow, maxCol, ["description"], used);
-    if (itemCol === null) itemCol = findColumn(headerRow, maxCol, ["item", "particular"], used);
-    if (itemCol !== null) used.add(itemCol);
+      let foundItemCol = findColumn(headerRow, maxCol, ["description"], used);
+      if (foundItemCol === null) foundItemCol = findColumn(headerRow, maxCol, ["item", "particular"], used);
+      if (foundItemCol !== null) used.add(foundItemCol);
 
-    let qtyCol = findColumn(headerRow, maxCol, ["qty", "quantity"], used);
-    if (qtyCol !== null) used.add(qtyCol);
+      let foundQtyCol = findColumn(headerRow, maxCol, ["qty", "quantity"], used);
+      if (foundQtyCol !== null) used.add(foundQtyCol);
 
-    let unitPriceCol = findColumn(headerRow, maxCol, ["unit price", "price", "rate", "amount"], used);
-    if (unitPriceCol !== null) used.add(unitPriceCol);
+      let foundUnitPriceCol = findColumn(headerRow, maxCol, ["unit price", "price", "rate", "amount"], used);
+      if (foundUnitPriceCol !== null) used.add(foundUnitPriceCol);
 
-    if (itemCol === null) itemCol = 1;
-    if (qtyCol === null) qtyCol = 2;
-    if (unitPriceCol === null) unitPriceCol = 3;
+      itemCol = foundItemCol ?? knownItemCol ?? 1;
+      qtyCol = foundQtyCol ?? knownQtyCol ?? 2;
+      unitPriceCol = foundUnitPriceCol ?? knownUnitPriceCol ?? 3;
+      dataStartIndex = header.index + 1;
+    } else if (knownItemCol !== null && knownQtyCol !== null && knownUnitPriceCol !== null) {
+      // No header found in this table at all — a continuation fragment. Reuse the mapping an
+      // earlier table in this document already established, and treat every row here as data.
+      itemCol = knownItemCol;
+      qtyCol = knownQtyCol;
+      unitPriceCol = knownUnitPriceCol;
+      dataStartIndex = 0;
+    } else {
+      // First table in the document and nothing recognizable — fall back to column order.
+      itemCol = 1;
+      qtyCol = 2;
+      unitPriceCol = 3;
+      dataStartIndex = 0;
+    }
 
-    for (const rowIndex of rowIndices.slice(headerIndex + 1)) {
+    knownItemCol = itemCol;
+    knownQtyCol = qtyCol;
+    knownUnitPriceCol = unitPriceCol;
+
+    for (const rowIndex of rowIndices.slice(dataStartIndex)) {
       const row = rows.get(rowIndex)!;
       const itemText = row.get(itemCol) ?? "";
       if (!itemText) continue;
