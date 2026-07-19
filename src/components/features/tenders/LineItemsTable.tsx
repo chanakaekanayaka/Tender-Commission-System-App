@@ -58,7 +58,7 @@ export function LineItemsTable({ items, onChange, vatRate = DEFAULT_VAT_RATE }: 
               <th className="py-2 pr-3 font-semibold">{t("lineItems.itemDescription")}</th>
               <th className="px-3 py-2 font-semibold">{t("lineItems.qty")}</th>
               <th className="px-3 py-2 font-semibold">{t("lineItems.unitPrice")}</th>
-              <th className="px-3 py-2 font-semibold">{t("lineItems.vat")}</th>
+              <th className="px-3 py-2 font-semibold">{t("lineItems.vat", { rate: Math.round(vatRate * 100) })}</th>
               <th className="px-3 py-2 font-semibold">{t("lineItems.subTotal")}</th>
               <th className="py-2 pl-3 font-semibold" />
             </tr>

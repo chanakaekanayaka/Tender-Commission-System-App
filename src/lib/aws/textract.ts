@@ -123,19 +123,41 @@ function buildTableGrid(table: Block, blockById: Map<string, Block>) {
   return { rows, rowIndices, maxCol };
 }
 
-// A row like "1  2  3  8=5*7  11=8+9-10" (pure column indices / spreadsheet-style formula refs,
-// no words) — some tender templates print this above the real text header row. Detecting it lets
-// us skip straight to the row that actually says "Item No / Description / Qty / Unit Price".
-function looksLikeColumnIndexRow(row: Map<number, string>, maxCol: number): boolean {
-  let nonEmpty = 0;
-  let indexLike = 0;
-  for (let col = 1; col <= maxCol; col++) {
-    const text = (row.get(col) ?? "").trim();
-    if (!text) continue;
-    nonEmpty += 1;
-    if (/^\d+(\s*=[\d+\-*/.\s]+)?$/.test(text)) indexLike += 1;
+const HEADER_HINT_KEYWORDS = [
+  "description",
+  "item",
+  "particular",
+  "qty",
+  "quantity",
+  "unit price",
+  "price",
+  "rate",
+  "amount",
+];
+
+/** Scans the first few rows of a table grid for the one that most looks like a real column header
+ *  (matches the most keyword hints), instead of assuming the header is always row 0 or 1 — real
+ *  documents often print a title row, a note row ("All prices are in LKR"), and/or a plain
+ *  column-index row ("1 2 3 ... 8=5*7 ...") above the actual text header. */
+function findHeaderRowIndex(rows: Map<number, Map<number, string>>, rowIndices: number[], maxCol: number): number {
+  const rowsToCheck = Math.min(5, rowIndices.length);
+  let bestIndex = 0;
+  let bestScore = 0;
+
+  for (let i = 0; i < rowsToCheck; i++) {
+    const row = rows.get(rowIndices[i])!;
+    let score = 0;
+    for (let col = 1; col <= maxCol; col++) {
+      const text = (row.get(col) ?? "").toLowerCase();
+      if (HEADER_HINT_KEYWORDS.some((kw) => text.includes(kw))) score += 1;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = i;
+    }
   }
-  return nonEmpty > 0 && indexLike / nonEmpty >= 0.6;
+
+  return bestIndex;
 }
 
 function findColumn(
@@ -168,11 +190,10 @@ export function extractLineItemsFromTables(blocks: Block[]): PriceScheduleLineIt
     const { rows, rowIndices, maxCol } = buildTableGrid(table, blockById);
     if (maxCol < 3) continue; // 1-2 column tables are key/value metadata, not line items
 
-    // Some templates print a plain column-index row above the real text header — skip it if found.
-    const headerRowCount = rowIndices.length > 1 && looksLikeColumnIndexRow(rows.get(rowIndices[0])!, maxCol) ? 2 : 1;
-    if (rowIndices.length <= headerRowCount) continue; // needs at least 1 data row after the header(s)
+    const headerIndex = findHeaderRowIndex(rows, rowIndices, maxCol);
+    if (rowIndices.length <= headerIndex + 1) continue; // needs at least 1 data row after the header
 
-    const headerRow = rows.get(rowIndices[headerRowCount - 1])!;
+    const headerRow = rows.get(rowIndices[headerIndex])!;
     const used = new Set<number>();
 
     let itemCol = findColumn(headerRow, maxCol, ["description"], used);
@@ -189,7 +210,7 @@ export function extractLineItemsFromTables(blocks: Block[]): PriceScheduleLineIt
     if (qtyCol === null) qtyCol = 2;
     if (unitPriceCol === null) unitPriceCol = 3;
 
-    for (const rowIndex of rowIndices.slice(headerRowCount)) {
+    for (const rowIndex of rowIndices.slice(headerIndex + 1)) {
       const row = rows.get(rowIndex)!;
       const itemText = row.get(itemCol) ?? "";
       if (!itemText) continue;
