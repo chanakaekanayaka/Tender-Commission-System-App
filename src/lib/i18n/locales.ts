@@ -74,8 +74,9 @@ export const en = {
   "metadataForm.uploadingDate": "Uploading Date",
 
   // Price Schedule — Line items
-  "lineItems.heading": "Line Items (AI-extracted · review and correct before saving)",
-  "lineItems.addRow": "Add row",
+  "lineItems.heading": "Line Items (AI-extracted · read-only, remove a row if it's wrong)",
+  "lineItems.no": "No.",
+  "lineItems.count": "{count} item(s)",
   "lineItems.itemDescription": "Item Description",
   "lineItems.qty": "Qty",
   "lineItems.unitPrice": "Unit Price",
@@ -480,8 +481,9 @@ export const si: Record<TranslationKey, string> = {
   "metadataForm.procurementTitle": "ප්‍රසම්පාදන මාතෘකාව",
   "metadataForm.uploadingDate": "උඩුගත කළ දිනය",
 
-  "lineItems.heading": "අයිතම (AI-උපුටාගත් · සුරැකීමට පෙර සමාලෝචනය කර නිවැරදි කරන්න)",
-  "lineItems.addRow": "පේළියක් එකතු කරන්න",
+  "lineItems.heading": "අයිතම (AI-උපුටාගත් · read-only, වැරදි නම් පේළිය ඉවත් කරන්න)",
+  "lineItems.no": "අංකය",
+  "lineItems.count": "අයිතම {count}",
   "lineItems.itemDescription": "අයිතම විස්තරය",
   "lineItems.qty": "ප්‍රමාණය",
   "lineItems.unitPrice": "ඒකක මිල",

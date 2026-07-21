@@ -349,7 +349,9 @@ const TABLE_LABEL_ALIASES: Record<keyof ExtractedMetadata, string[]> = {
   procurementTitle: ["title of the procurement", "procurement title", "title"],
   // "Name of the PE" — "PE" = Procuring Entity, eGP's usual abbreviation.
   procuringEntity: ["name of the pe", "procuring entity", "name of the procuring entity", "entity"],
-  closingDate: ["closing date"],
+  // eGP Sri Lanka price schedules don't print an actual "Closing Date" — "Submitted Date & Time"
+  // is the closest available date on the document and is used as the Closing Date source instead.
+  closingDate: ["closing date", "submitted date & time", "submitted date"],
 };
 
 function matchLabel(label: string): keyof ExtractedMetadata | null {
