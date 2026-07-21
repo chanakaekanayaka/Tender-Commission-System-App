@@ -4,6 +4,7 @@ import { Image as ImageIcon } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
 import { useTheme } from "@/context/ThemeProvider";
 import { useTranslation } from "@/context/LanguageContext";
@@ -24,8 +25,7 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
   const { setSidebarColor } = useTheme();
   const [values, setValues] = useState<SystemConfigValues>(initialValues);
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +46,7 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setSaveError(null);
+    setToast(null);
 
     try {
       const res = await fetch("/api/system-config", {
@@ -64,9 +64,12 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
       }
 
       setSidebarColor(values.themeColor);
-      setSavedAt(Date.now());
+      setToast({ message: t("systemConfig.saved"), variant: "success" });
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save system config.");
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to save system config.",
+        variant: "error",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -170,10 +173,7 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
         </div>
       </Card>
 
-      {saveError && <p className="text-sm text-ink">{saveError}</p>}
-
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {savedAt && <span className="text-xs text-muted">{t("systemConfig.saved")}</span>}
         <button
           type="submit"
           disabled={isSaving}
@@ -182,6 +182,8 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
           {t("systemConfig.save")}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </form>
   );
 }

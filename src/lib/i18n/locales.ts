@@ -52,16 +52,15 @@ export const en = {
 
   // Price Schedule — Create
   "tenders.createHeading": "New Price Schedule",
-  "tenders.saveDraft": "Save Draft",
-  "tenders.savePriceSchedule": "Save Price Schedule →",
-  "tenders.draftSaved": "Draft saved.",
+  "tenders.save": "Save",
   "tenders.priceScheduleSaved": "Price Schedule saved.",
 
   // Price Schedule — Source Document dropzone
   "dropzone.sourceDocument": "Source Document",
   "dropzone.dropHere": "Drop tender document here",
-  "dropzone.fileTypesHint": "PDF / DOCX / image · or",
+  "dropzone.fileTypesHint": "PDF only · or",
   "dropzone.browseFiles": "browse files",
+  "dropzone.pdfOnly": "Only PDF documents are supported.",
   "dropzone.extracting": "AI extracting data from {fileName}…",
   "dropzone.extractedSuccessfully": "Extracted successfully",
   "dropzone.replaceFile": "Replace file",
@@ -69,12 +68,12 @@ export const en = {
   "dropzone.parsing": "Parsing…",
 
   // Price Schedule — Metadata form
-  "metadataForm.heading": "Metadata (auto-filled by AI · review and correct before saving)",
+  "metadataForm.heading": "Metadata",
   "metadataForm.procurementTitle": "Procurement Title",
   "metadataForm.uploadingDate": "Uploading Date",
 
   // Price Schedule — Line items
-  "lineItems.heading": "Line Items (AI-extracted · read-only, remove a row if it's wrong)",
+  "lineItems.heading": "Line Items",
   "lineItems.no": "No.",
   "lineItems.count": "{count} item(s)",
   "lineItems.itemDescription": "Item Description",
@@ -92,6 +91,7 @@ export const en = {
   "priceScheduleHistory.searchPlaceholder": "Search by procurement no, entity, date, value or status",
   "priceScheduleHistory.noResults": 'No price schedules match "{query}".',
   "priceScheduleHistory.export": "Export",
+  "priceScheduleHistory.exporting": "Exporting…",
   "priceScheduleHistory.exportPdf": "PDF",
   "priceScheduleHistory.exportCsv": "CSV",
   "priceScheduleHistory.exportExcel": "Excel",
@@ -254,7 +254,7 @@ export const en = {
   // Shared across multiple forms/tables
   "common.procurementNo": "Procurement No",
   "common.procuringEntity": "Procuring Entity",
-  "common.closingDate": "Closing Date",
+  "common.closingDate": "Submitted Date",
   "common.totalValue": "Total Value",
   "common.status": "Status",
   "common.actions": "Actions",
@@ -462,26 +462,25 @@ export const si: Record<TranslationKey, string> = {
   "jobOrderDetailModal.documentHeading": "ලේඛන පෙරදසුන",
 
   "tenders.createHeading": "නව මිල ලේඛනය",
-  "tenders.saveDraft": "කෙටුම්පත සුරකින්න",
-  "tenders.savePriceSchedule": "මිල ලේඛනය සුරකින්න →",
-  "tenders.draftSaved": "කෙටුම්පත සුරකින ලදී.",
+  "tenders.save": "සුරකින්න",
   "tenders.priceScheduleSaved": "මිල ලේඛනය සුරකින ලදී.",
 
   "dropzone.sourceDocument": "මූලාශ්‍ර ලේඛනය",
   "dropzone.dropHere": "ටෙන්ඩර් ලේඛනය මෙහි දමන්න",
-  "dropzone.fileTypesHint": "PDF / DOCX / රූපය · හෝ",
+  "dropzone.fileTypesHint": "PDF පමණි · හෝ",
   "dropzone.browseFiles": "ගොනු පිරික්සන්න",
+  "dropzone.pdfOnly": "PDF ලේඛන පමණක් සහාය දක්වයි.",
   "dropzone.extracting": "{fileName} වෙතින් AI දත්ත උපුටා ගනිමින්…",
   "dropzone.extractedSuccessfully": "සාර්ථකව උපුටා ගන්නා ලදී",
   "dropzone.replaceFile": "ගොනුව වෙනස් කරන්න",
   "dropzone.parse": "විශ්ලේෂණය කරන්න",
   "dropzone.parsing": "විශ්ලේෂණය කරමින්…",
 
-  "metadataForm.heading": "පාර්ශ්ව දත්ත (AI මගින් ස්වයංක්‍රීයව පුරවා ඇත · සුරැකීමට පෙර සමාලෝචනය කර නිවැරදි කරන්න)",
+  "metadataForm.heading": "පාර්ශ්ව දත්ත",
   "metadataForm.procurementTitle": "ප්‍රසම්පාදන මාතෘකාව",
   "metadataForm.uploadingDate": "උඩුගත කළ දිනය",
 
-  "lineItems.heading": "අයිතම (AI-උපුටාගත් · read-only, වැරදි නම් පේළිය ඉවත් කරන්න)",
+  "lineItems.heading": "අයිතම",
   "lineItems.no": "අංකය",
   "lineItems.count": "අයිතම {count}",
   "lineItems.itemDescription": "අයිතම විස්තරය",
@@ -498,6 +497,7 @@ export const si: Record<TranslationKey, string> = {
   "priceScheduleHistory.searchPlaceholder": "ප්‍රසම්පාදන අංකය, ආයතනය, දිනය, අගය හෝ තත්ත්වය අනුව සොයන්න",
   "priceScheduleHistory.noResults": '"{query}" ට ගැලපෙන මිල ලේඛන නොමැත.',
   "priceScheduleHistory.export": "අපනයනය",
+  "priceScheduleHistory.exporting": "අපනයනය කරමින්…",
   "priceScheduleHistory.exportPdf": "PDF",
   "priceScheduleHistory.exportCsv": "CSV",
   "priceScheduleHistory.exportExcel": "Excel",
@@ -652,7 +652,7 @@ export const si: Record<TranslationKey, string> = {
 
   "common.procurementNo": "ප්‍රසම්පාදන අංකය",
   "common.procuringEntity": "ප්‍රසම්පාදන ආයතනය",
-  "common.closingDate": "අවසන් දිනය",
+  "common.closingDate": "ඉදිරිපත් කළ දිනය",
   "common.totalValue": "මුළු අගය",
   "common.status": "තත්ත්වය",
   "common.actions": "ක්‍රියා",

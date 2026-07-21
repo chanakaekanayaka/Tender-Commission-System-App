@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SelectField } from "@/components/ui/SelectField";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { PermissionsFieldset } from "@/components/features/users/PermissionsFieldset";
 import { UserAccessPreview } from "@/components/features/users/UserAccessPreview";
 import { useTranslation } from "@/context/LanguageContext";
@@ -56,7 +57,7 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
       : emptyValues,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const isAdmin = values.role === "Admin";
   const isCreating = !initialUser;
@@ -80,12 +81,15 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setSubmitError(null);
+    setToast(null);
     setIsSubmitting(true);
     try {
       await onSubmit(values);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Something went wrong. Please try again.");
+      setToast({
+        message: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -154,8 +158,6 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
         )}
       </Card>
 
-      {submitError && <p className="text-sm text-red-600">{submitError}</p>}
-
       <div className="flex flex-wrap justify-end gap-3">
         {onCancel && (
           <button
@@ -178,6 +180,8 @@ export function UserForm({ initialUser, onSubmit, onCancel }: UserFormProps) {
               : t("userForm.createUser")}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </form>
   );
 }

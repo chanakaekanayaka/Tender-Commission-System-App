@@ -15,7 +15,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 // Harmless no-op on other hosts (e.g. AWS Amplify, which governs its own compute timeout).
 export const maxDuration = 60;
 
-const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/tiff"];
+const ALLOWED_TYPES = ["application/pdf"];
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 /** Uploads the scanned tender document to S3, runs Textract table analysis, and returns the
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return apiError("No file uploaded.", 400);
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return apiError("Unsupported file type. Upload a PDF, PNG, JPEG, or TIFF.", 400);
+      return apiError("Unsupported file type. Only PDF documents are supported.", 400);
     }
     if (file.size > MAX_FILE_SIZE_BYTES) {
       return apiError("File is too large (max 15MB).", 400);

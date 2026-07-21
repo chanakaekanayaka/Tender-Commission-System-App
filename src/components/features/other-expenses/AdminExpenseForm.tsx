@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { SearchableSelectField } from "@/components/ui/SearchableSelectField";
 import { SelectField } from "@/components/ui/SelectField";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { EXPENSE_CATEGORIES } from "@/shared/types/other-expense.types";
 import type { AdminExpenseRecord, ExpenseCategory } from "@/shared/types/other-expense.types";
@@ -24,7 +25,7 @@ export function AdminExpenseForm({ jobOrderNos, onSubmit }: AdminExpenseFormProp
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = jobOrderNo !== "" && category !== "" && amount > 0 && description.trim() !== "";
@@ -53,7 +54,7 @@ export function AdminExpenseForm({ jobOrderNos, onSubmit }: AdminExpenseFormProp
     setAmount(0);
     setDescription("");
     setReceiptFileName(undefined);
-    setSavedAt(Date.now());
+    setToast({ message: t("otherExpenses.saved"), variant: "success" });
   };
 
   return (
@@ -113,7 +114,6 @@ export function AdminExpenseForm({ jobOrderNos, onSubmit }: AdminExpenseFormProp
       </Card>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {savedAt && <span className="text-xs text-muted">{t("otherExpenses.saved")}</span>}
         <button
           type="submit"
           disabled={!canSubmit}
@@ -122,6 +122,8 @@ export function AdminExpenseForm({ jobOrderNos, onSubmit }: AdminExpenseFormProp
           {t("otherExpenses.save")}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </form>
   );
 }

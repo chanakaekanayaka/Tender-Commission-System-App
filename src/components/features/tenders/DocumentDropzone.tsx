@@ -2,10 +2,11 @@
 
 import { CheckCircle2, Loader2, UploadCloud, XCircle } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import type { PriceScheduleLineItem, PriceScheduleMetadata } from "@/shared/types/tender.types";
 
-type Status = "idle" | "dragging" | "selected" | "extracting" | "done" | "error";
+type Status = "idle" | "dragging" | "selected" | "extracting" | "done" | "error" | "invalidType";
 
 export interface ExtractResult {
   metadata: Partial<Omit<PriceScheduleMetadata, "uploadingDate">>;
@@ -24,13 +25,19 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>("idle");
   const [file, setFile] = useState<File | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (selected: File | undefined) => {
     if (!selected) return;
+    if (selected.type !== "application/pdf") {
+      setFile(selected);
+      setToast({ message: t("dropzone.pdfOnly"), variant: "error" });
+      setStatus("invalidType");
+      return;
+    }
     setFile(selected);
-    setErrorMessage(null);
+    setToast(null);
     setStatus("selected");
   };
 
@@ -53,13 +60,13 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
     e.stopPropagation();
     setStatus("idle");
     setFile(null);
-    setErrorMessage(null);
+    setToast(null);
   };
 
   const handleParse = async () => {
     if (!file) return;
     setStatus("extracting");
-    setErrorMessage(null);
+    setToast(null);
 
     try {
       const formData = new FormData();
@@ -76,7 +83,7 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
       onExtracted(result.data);
     } catch (err) {
       setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Failed to extract document.");
+      setToast({ message: err instanceof Error ? err.message : "Failed to extract document.", variant: "error" });
     }
   };
 
@@ -101,7 +108,7 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.png,.jpg,.jpeg,.tiff"
+          accept=".pdf,application/pdf"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
@@ -122,15 +129,14 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
               {t("dropzone.replaceFile")}
             </button>
           </>
-        ) : status === "selected" || status === "error" ? (
+        ) : status === "selected" || status === "error" || status === "invalidType" ? (
           <>
-            {status === "error" ? (
+            {status === "error" || status === "invalidType" ? (
               <XCircle className="h-6 w-6 text-ink" aria-hidden />
             ) : (
               <UploadCloud className="h-6 w-6 text-muted" aria-hidden />
             )}
             <p className="text-sm font-medium text-ink">{file?.name}</p>
-            {status === "error" && errorMessage && <p className="text-xs text-ink">{errorMessage}</p>}
             <button type="button" onClick={handleReplace} className="text-xs text-muted underline hover:text-ink">
               {t("dropzone.replaceFile")}
             </button>
@@ -164,6 +170,8 @@ export function DocumentDropzone({ onExtracted }: DocumentDropzoneProps) {
           )}
         </button>
       )}
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

@@ -59,10 +59,11 @@ const priceScheduleSchema = new Schema<PriceScheduleDocument>(
   { timestamps: true },
 );
 
-// createdBy: Staff's "own records only" filter (AI_INSTRUCTIONS.md §3). procurementNo: Job Order
-// linking lookup. status: History table filtering by Draft/Completed.
+// createdBy: Staff's "own records only" filter (AI_INSTRUCTIONS.md §3). procurementNo: unique —
+// the same tender document must not be saved as a Price Schedule more than once. status: History
+// table filtering by Draft/Completed.
 priceScheduleSchema.index({ createdBy: 1 });
-priceScheduleSchema.index({ procurementNo: 1 });
+priceScheduleSchema.index({ procurementNo: 1 }, { unique: true });
 priceScheduleSchema.index({ status: 1 });
 
 priceScheduleSchema.set("toJSON", {

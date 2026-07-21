@@ -4,6 +4,7 @@ import { Paperclip } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import type { OtherExpenseRecord } from "@/shared/types/other-expense.types";
 
@@ -18,7 +19,7 @@ export function OtherExpenseForm({ onSubmit }: OtherExpenseFormProps) {
   const [amount, setAmount] = useState(0);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [receiptFileName, setReceiptFileName] = useState<string | undefined>();
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = description.trim() !== "" && amount > 0;
@@ -43,7 +44,7 @@ export function OtherExpenseForm({ onSubmit }: OtherExpenseFormProps) {
     setDescription("");
     setAmount(0);
     setReceiptFileName(undefined);
-    setSavedAt(Date.now());
+    setToast({ message: t("otherExpenses.saved"), variant: "success" });
   };
 
   return (
@@ -88,7 +89,6 @@ export function OtherExpenseForm({ onSubmit }: OtherExpenseFormProps) {
       </Card>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {savedAt && <span className="text-xs text-muted">{t("otherExpenses.saved")}</span>}
         <button
           type="submit"
           disabled={!canSubmit}
@@ -97,6 +97,8 @@ export function OtherExpenseForm({ onSubmit }: OtherExpenseFormProps) {
           {t("otherExpenses.save")}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </form>
   );
 }

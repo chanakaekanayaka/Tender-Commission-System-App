@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
     if (err instanceof ZodError) {
       return apiError("Invalid input.", 422, err.flatten().fieldErrors);
     }
+    // Mongo duplicate key (E11000) on the unique procurementNo index — the same tender document
+    // was already saved as a Price Schedule.
+    if (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === 11000) {
+      return apiError("A Price Schedule with this Procurement No already exists.", 409);
+    }
     console.error("POST /api/price-schedules failed:", err);
     return apiError("Something went wrong while saving the price schedule.", 500);
   }

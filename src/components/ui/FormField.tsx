@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useState, type ReactNode } from "react";
 
 interface FormFieldProps {
   label: ReactNode;
@@ -26,12 +27,15 @@ export function FormField({
   max,
   step,
 }: FormFieldProps) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
   return (
     <label className="block text-sm">
       <span className="text-muted">{label}</span>
       <div className="relative mt-1">
         <input
-          type={type}
+          type={isPassword && showPassword ? "text" : type}
           value={value}
           disabled={disabled}
           placeholder={placeholder}
@@ -40,13 +44,24 @@ export function FormField({
           step={step}
           onChange={(e) => onChange?.(e.target.value)}
           className={`block w-full rounded-none border border-border bg-surface px-3 py-2 text-ink focus:border-active focus:outline-none ${
-            suffix ? "pr-10" : ""
+            suffix || isPassword ? "pr-10" : ""
           } ${disabled ? "cursor-not-allowed bg-card text-muted" : ""}`}
         />
-        {suffix && (
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted">
-            {suffix}
-          </span>
+        {isPassword ? (
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute inset-y-0 right-3 flex items-center text-muted hover:text-ink"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+          </button>
+        ) : (
+          suffix && (
+            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-muted">
+              {suffix}
+            </span>
+          )
         )}
       </div>
     </label>

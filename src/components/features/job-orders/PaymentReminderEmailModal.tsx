@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { formatLKR } from "@/lib/utils/currency";
@@ -42,14 +43,14 @@ export function PaymentReminderEmailModal({
       companyName: defaultSystemConfig.companyName,
     }),
   );
-  const [sentAt, setSentAt] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const handleSend = (e: FormEvent) => {
     e.preventDefault();
     // TODO: POST /api/job-orders/payment-reminder-email once that route exists — UI-only
     // mock phase (AGENTS.md).
     console.log("Send payment overdue email", { jobOrderNo, to, cc, bcc, message });
-    setSentAt(Date.now());
+    setToast({ message: t("jobOrderPending.emailSent", { to }), variant: "success" });
   };
 
   return (
@@ -71,12 +72,13 @@ export function PaymentReminderEmailModal({
         </label>
 
         <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-          {sentAt && <span className="text-xs text-muted">{t("jobOrderPending.emailSent", { to })}</span>}
           <button type="submit" className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink">
             {t("jobOrderPending.emailSend")}
           </button>
         </div>
       </form>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </Modal>
   );
 }

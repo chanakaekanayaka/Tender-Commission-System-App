@@ -6,6 +6,7 @@ import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { UserForm, type UserFormValues } from "@/components/features/users/UserForm";
 import { useTranslation } from "@/context/LanguageContext";
 import type { User } from "@/shared/types/user.types";
@@ -25,7 +26,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
-  const [statusError, setStatusError] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -56,7 +57,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
   };
 
   const handleConfirmStatusChange = async () => {
-    setStatusError(null);
+    setToast(null);
     const res = await fetch(`/api/users/${statusTargetId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -65,7 +66,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
     const result = await res.json();
 
     if (!res.ok || !result.success) {
-      setStatusError(result.message ?? "Failed to update status.");
+      setToast({ message: result.message ?? "Failed to update status.", variant: "error" });
       return;
     }
 
@@ -158,7 +159,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
         open={statusTargetUser !== null}
         onClose={() => {
           setStatusTargetId(null);
-          setStatusError(null);
+          setToast(null);
         }}
         title={nextStatus === "Blocked" ? t("usersList.blockConfirmTitle") : t("usersList.unblockConfirmTitle")}
       >
@@ -169,13 +170,12 @@ export function UsersTable({ initialData }: UsersTableProps) {
                 name: `${statusTargetUser.firstName} ${statusTargetUser.lastName}`,
               })}
             </p>
-            {statusError && <p className="text-sm text-red-600">{statusError}</p>}
             <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setStatusTargetId(null);
-                  setStatusError(null);
+                  setToast(null);
                 }}
                 className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
               >
@@ -199,6 +199,8 @@ export function UsersTable({ initialData }: UsersTableProps) {
           </div>
         )}
       </Modal>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

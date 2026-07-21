@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronDown, Download, Eye, FileSpreadsheet, FileText } from "lucide-react";
+import { ChevronDown, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import type { PriceScheduleSummary } from "@/shared/types/tender.types";
@@ -15,9 +16,18 @@ const EXPORT_OPTIONS: { format: ExportFormat; labelKey: "priceScheduleHistory.ex
   { format: "excel", labelKey: "priceScheduleHistory.exportExcel", icon: FileSpreadsheet },
 ];
 
-function ExportMenu() {
+const EXPORT_FILE_EXTENSION: Record<ExportFormat, string> = { pdf: "pdf", csv: "csv", excel: "xlsx" };
+
+interface ExportMenuProps {
+  /** Ids of the rows currently visible (i.e. matching the active search filter) to export. */
+  rowIds: string[];
+}
+
+function ExportMenu({ rowIds }: ExportMenuProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,9 +39,37 @@ function ExportMenu() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // Mock export — no file generation yet, just closes the menu once a format is picked.
-  const handleExport = (_format: ExportFormat) => {
+  const handleExport = async (format: ExportFormat) => {
     setIsOpen(false);
+    if (rowIds.length === 0) return;
+
+    setIsExporting(true);
+    setToast(null);
+
+    try {
+      const res = await fetch("/api/price-schedules/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format, ids: rowIds }),
+      });
+
+      if (!res.ok) {
+        const result = await res.json().catch(() => null);
+        throw new Error(result?.message ?? "Failed to export.");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `price-schedules.${EXPORT_FILE_EXTENSION[format]}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to export.", variant: "error" });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -39,11 +77,12 @@ function ExportMenu() {
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
+        disabled={isExporting}
         aria-expanded={isOpen}
-        className="flex items-center gap-2 rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
+        className="flex items-center gap-2 rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Download className="h-4 w-4" aria-hidden />
-        {t("priceScheduleHistory.export")}
+        {isExporting ? t("priceScheduleHistory.exporting") : t("priceScheduleHistory.export")}
         <ChevronDown className="h-4 w-4" aria-hidden />
       </button>
 
@@ -62,6 +101,8 @@ function ExportMenu() {
           ))}
         </div>
       )}
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
@@ -108,7 +149,7 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
           placeholder={t("priceScheduleHistory.searchPlaceholder")}
         />
 
-        <ExportMenu />
+        <ExportMenu rowIds={filtered.map((row) => row.id)} />
       </div>
 
       {/* Scrollable on small screens per AI_INSTRUCTIONS.md §C */}
@@ -121,7 +162,6 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
               <th className="px-3 py-2 font-semibold">{t("common.closingDate")}</th>
               <th className="px-3 py-2 font-semibold">{t("common.totalValue")}</th>
               <th className="px-3 py-2 font-semibold">{t("common.status")}</th>
-              <th className="py-2 pl-3 font-semibold">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -142,19 +182,12 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
                     {row.status === "Completed" ? t("status.completed") : t("status.draft")}
                   </span>
                 </td>
-                <td className="py-2 pl-3">
-                  <div className="flex items-center gap-2 text-muted">
-                    <button type="button" aria-label={t("common.view")} className="hover:text-ink">
-                      <Eye className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                </td>
               </tr>
             ))}
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-muted">
+                <td colSpan={5} className="py-6 text-center text-muted">
                   {t("priceScheduleHistory.noResults", { query })}
                 </td>
               </tr>
