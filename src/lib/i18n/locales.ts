@@ -64,8 +64,8 @@ export const en = {
   "dropzone.extracting": "AI extracting data from {fileName}…",
   "dropzone.extractedSuccessfully": "Extracted successfully",
   "dropzone.replaceFile": "Replace file",
-  "dropzone.parse": "Parse",
-  "dropzone.parsing": "Parsing…",
+  "dropzone.parse": "Scan",
+  "dropzone.parsing": "Scanning…",
 
   // Price Schedule — Metadata form
   "metadataForm.heading": "Metadata",
@@ -478,8 +478,8 @@ export const si: Record<TranslationKey, string> = {
   "dropzone.extracting": "{fileName} වෙතින් AI දත්ත උපුටා ගනිමින්…",
   "dropzone.extractedSuccessfully": "සාර්ථකව උපුටා ගන්නා ලදී",
   "dropzone.replaceFile": "ගොනුව වෙනස් කරන්න",
-  "dropzone.parse": "විශ්ලේෂණය කරන්න",
-  "dropzone.parsing": "විශ්ලේෂණය කරමින්…",
+  "dropzone.parse": "Scan කරන්න",
+  "dropzone.parsing": "Scan කරමින්…",
 
   "metadataForm.heading": "පාර්ශ්ව දත්ත",
   "metadataForm.procurementTitle": "ප්‍රසම්පාදන මාතෘකාව",
