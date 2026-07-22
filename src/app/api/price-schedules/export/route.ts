@@ -6,6 +6,7 @@ import { PriceScheduleModel } from "@/lib/db/models/PriceSchedule.model";
 import { requireAuth } from "@/lib/auth/guard";
 import { apiError } from "@/lib/api/response";
 import { formatLKR } from "@/lib/utils/currency";
+import { toArrayBuffer } from "@/lib/utils/buffer";
 
 const FORMATS = ["pdf", "csv", "excel"] as const;
 type ExportFormat = (typeof FORMATS)[number];
@@ -16,12 +17,6 @@ interface ExportRow {
   submittedDate: string;
   totalValue: number;
   status: string;
-}
-
-/** Response's BodyInit doesn't accept Node's Buffer directly under this TS config — copy out the
- *  underlying bytes into a real ArrayBuffer instead. */
-function toArrayBuffer(buffer: Buffer): ArrayBuffer {
-  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }
 
 function escapeCsvField(value: string): string {

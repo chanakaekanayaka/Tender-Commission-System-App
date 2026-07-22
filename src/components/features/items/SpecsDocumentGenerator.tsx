@@ -1,21 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Pagination } from "@/components/ui/Pagination";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
-import { openItemSpecsDocument } from "@/lib/utils/openItemSpecsDocument";
 import type { CatalogItem } from "@/shared/types/item.types";
 
 interface SpecsDocumentGeneratorProps {
   items: CatalogItem[];
 }
 
-/** Client Component — owns checkbox selection state and triggers the print-based document, so this is the sole client boundary in "Create Specs Doc". */
+const PAGE_SIZE = 10;
+
+/** Client Component — owns checkbox selection state and downloads the server-generated PDF, so
+ *  this is the sole client boundary in "Create Specs Doc". */
 export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
   const { t } = useTranslation();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
-  const allSelected = items.length > 0 && selectedIds.size === items.length;
+  const filteredItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => `${item.name} ${item.code}`.toLowerCase().includes(q));
+  }, [items, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    setPage(1);
+  };
+
+  // "Select all" applies to every item matching the current search, not just the visible page —
+  // selections made under a different search term are left untouched.
+  const allFilteredSelected = filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(item.id));
 
   const toggle = (id: string) => {
     setSelectedIds((prev) => {
@@ -27,27 +52,54 @@ export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
   };
 
   const toggleAll = () => {
-    setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => item.id)));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredItems.forEach((item) => next.delete(item.id));
+      } else {
+        filteredItems.forEach((item) => next.add(item.id));
+      }
+      return next;
+    });
   };
 
-  const handleGenerate = () => {
-    const selectedItems = items.filter((item) => selectedIds.has(item.id));
-    if (selectedItems.length === 0) return;
+  const handleGenerate = async () => {
+    if (selectedIds.size === 0) return;
+    setIsGenerating(true);
+    setToast(null);
 
-    openItemSpecsDocument({
-      companyName: defaultSystemConfig.companyName,
-      title: t("items.createSpecsDocTitle"),
-      items: selectedItems.map((item) => ({
-        code: item.code,
-        name: item.name,
-        imageUrl: item.imageUrl,
-        specs: item.specs,
-      })),
-    });
+    try {
+      const res = await fetch("/api/items/specs-doc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+
+      if (!res.ok) {
+        const result = await res.json().catch(() => null);
+        throw new Error(result?.message ?? "Failed to generate document.");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "item-specs.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to generate document.", variant: "error" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+        <SearchInput value={query} onChange={handleQueryChange} placeholder={t("items.searchPlaceholder")} />
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] text-left text-sm">
           <thead>
@@ -55,7 +107,7 @@ export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
               <th className="py-2 pr-3 font-semibold">
                 <input
                   type="checkbox"
-                  checked={allSelected}
+                  checked={allFilteredSelected}
                   onChange={toggleAll}
                   aria-label={t("items.selectAll")}
                   className="h-4 w-4 rounded-none border-border"
@@ -66,7 +118,7 @@ export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
+            {pageItems.map((item) => (
               <tr key={item.id} className="border-b border-border last:border-b-0">
                 <td className="py-2 pr-3">
                   <input
@@ -82,10 +134,10 @@ export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
               </tr>
             ))}
 
-            {items.length === 0 && (
+            {filteredItems.length === 0 && (
               <tr>
                 <td colSpan={3} className="py-6 text-center text-muted">
-                  {t("items.noItems")}
+                  {query ? t("items.noResults", { query }) : t("items.noItems")}
                 </td>
               </tr>
             )}
@@ -93,17 +145,21 @@ export function SpecsDocumentGenerator({ items }: SpecsDocumentGeneratorProps) {
         </table>
       </div>
 
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+
       <div className="mt-4 flex items-center justify-between gap-3">
         <p className="text-xs text-muted">{t("items.selectedCount", { count: selectedIds.size })}</p>
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={selectedIds.size === 0}
+          disabled={selectedIds.size === 0 || isGenerating}
           className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {t("items.generatePdf")}
+          {isGenerating ? t("items.generating") : t("items.generatePdf")}
         </button>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
