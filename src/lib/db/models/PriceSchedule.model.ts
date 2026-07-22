@@ -3,6 +3,9 @@ import type { PriceScheduleStatus } from "@/shared/types/tender.types";
 
 export interface PriceScheduleLineItemSubdoc {
   item: string;
+  /** Links this line to the Items catalog (see src/lib/db/items.ts) — resolved/auto-created at
+   *  save time from `item`'s text, never supplied by the client. */
+  itemCode: string;
   qty: number;
   unitPrice: number;
 }
@@ -27,6 +30,7 @@ export interface PriceScheduleDocument extends Document {
 const lineItemSchema = new Schema<PriceScheduleLineItemSubdoc>(
   {
     item: { type: String, required: true, trim: true },
+    itemCode: { type: String, required: true, trim: true },
     qty: { type: Number, required: true, min: 0 },
     unitPrice: { type: Number, required: true, min: 0 },
   },

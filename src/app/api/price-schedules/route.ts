@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import connectDB from "@/lib/db/connectDB";
+import { resolveItemCode } from "@/lib/db/items";
 import { PriceScheduleModel } from "@/lib/db/models/PriceSchedule.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { requireAuth } from "@/lib/auth/guard";
@@ -25,10 +26,15 @@ export async function POST(request: NextRequest) {
 
     let subTotal = 0;
     let vatAmount = 0;
+    const lineItemsWithCodes = [];
     for (const item of input.lineItems) {
       const totals = calculateLineItemTotals(item.qty, item.unitPrice, vatRate);
       subTotal += totals.base;
       vatAmount += totals.vat;
+      // Matches (or auto-creates) the Items catalog entry for this line's description — the
+      // Items catalog is populated from Price Schedules, not maintained separately.
+      const itemCode = await resolveItemCode(item.item);
+      lineItemsWithCodes.push({ ...item, itemCode });
     }
 
     const priceSchedule = await PriceScheduleModel.create({
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
       procurementTitle: input.procurementTitle,
       procuringEntity: input.procuringEntity,
       closingDate: new Date(input.closingDate),
-      lineItems: input.lineItems,
+      lineItems: lineItemsWithCodes,
       subTotal,
       vatAmount,
       totalValue: subTotal + vatAmount,
