@@ -8,10 +8,19 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { formatAmount } from "@/lib/utils/currency";
 import type { CatalogItem, ItemSpec } from "@/shared/types/item.types";
 
 interface ItemCatalogFormProps {
   initialItems: CatalogItem[];
+}
+
+interface UsageRow {
+  procurementNo: string;
+  procuringEntity: string;
+  closingDate: string;
+  qty: number;
+  unitPrice: number;
 }
 
 const PAGE_SIZE = 12;
@@ -37,6 +46,9 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  const [usage, setUsage] = useState<UsageRow[]>([]);
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
   useEffect(() => {
     if (!imagePreviewUrl) return;
@@ -64,12 +76,22 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
     setImageFile(null);
     setImagePreviewUrl(null);
     setNewSpecLabel("");
+
+    setUsage([]);
+    setIsLoadingUsage(true);
+    fetch(`/api/items/${item.id}/usage`)
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) setUsage(result.data);
+      })
+      .finally(() => setIsLoadingUsage(false));
   };
 
   const closeEditor = () => {
     setEditingItem(null);
     setImageFile(null);
     setImagePreviewUrl(null);
+    setUsage([]);
   };
 
   const handleFile = (file: File | undefined) => {
@@ -344,6 +366,40 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
                 ))}
               </div>
             )}
+
+            <div>
+              <p className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">
+                {t("items.usageHistory")}
+              </p>
+              {isLoadingUsage ? (
+                <p className="text-sm text-muted">{t("items.loadingUsage")}</p>
+              ) : usage.length === 0 ? (
+                <p className="text-sm text-muted">{t("items.usageEmpty")}</p>
+              ) : (
+                <div className="overflow-x-auto border border-border">
+                  <table className="w-full min-w-[480px] text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-xs text-muted uppercase">
+                        <th className="px-3 py-2 font-semibold">{t("common.procurementNo")}</th>
+                        <th className="px-3 py-2 font-semibold">{t("common.procuringEntity")}</th>
+                        <th className="px-3 py-2 font-semibold">{t("lineItems.qty")}</th>
+                        <th className="px-3 py-2 font-semibold">{t("lineItems.unitPrice")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usage.map((row, index) => (
+                        <tr key={`${row.procurementNo}-${index}`} className="border-b border-border last:border-b-0">
+                          <td className="px-3 py-2 font-medium text-ink">{row.procurementNo}</td>
+                          <td className="px-3 py-2 text-ink">{row.procuringEntity}</td>
+                          <td className="px-3 py-2 text-ink">{row.qty}</td>
+                          <td className="px-3 py-2 text-ink">{formatAmount(row.unitPrice)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
             <div className="flex justify-end gap-3">
               <button
