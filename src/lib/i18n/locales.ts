@@ -422,6 +422,9 @@ export const en = {
   "items.codeAutoAssigned": "Item code will be assigned automatically.",
   "items.created": "Item created.",
   "items.specsCount": "{count} spec(s)",
+  "items.usageHistory": "Usage History (Price Schedules)",
+  "items.loadingUsage": "Loading usage history…",
+  "items.usageEmpty": "Not used in any Price Schedule yet.",
 
   "language.label": "Language",
 } as const;
@@ -831,6 +834,9 @@ export const si: Record<TranslationKey, string> = {
   "items.codeAutoAssigned": "අයිතම කේතය ස්වයංක්‍රීයව පවරනු ලැබේ.",
   "items.created": "අයිතමය සාදන ලදී.",
   "items.specsCount": "පිරිවිතර {count}ක්",
+  "items.usageHistory": "භාවිත ඉතිහාසය (මිල ලේඛන)",
+  "items.loadingUsage": "භාවිත ඉතිහාසය ලෝඩ් වෙමින්…",
+  "items.usageEmpty": "තවම කිසිම මිල ලේඛනයක භාවිත වී නැත.",
 
   "language.label": "භාෂාව",
 };
