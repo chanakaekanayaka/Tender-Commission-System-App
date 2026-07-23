@@ -58,9 +58,12 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     labelKey: "sidebar.items",
     children: [
       { labelKey: "sidebar.catalog", href: "/staff/items/catalog" },
-      { labelKey: "sidebar.marketAnalysis", href: "/staff/items/market-analysis" },
       { labelKey: "sidebar.createSpecsDoc", href: "/staff/items/create-specs-doc" },
     ],
+  },
+  {
+    labelKey: "sidebar.analysis",
+    children: [{ labelKey: "sidebar.marketAnalysis", href: "/staff/analysis/market-analysis" }],
   },
 ];
 

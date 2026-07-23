@@ -26,6 +26,7 @@ export const en = {
   "sidebar.catalog": "Catalog",
   "sidebar.marketAnalysis": "Market Analysis",
   "sidebar.createSpecsDoc": "Create Specs Doc",
+  "sidebar.analysis": "Analysis",
 
   // Staff dashboard
   "dashboard.greeting": "Hello {name} 👋",
@@ -416,6 +417,11 @@ export const en = {
   "items.generating": "Generating…",
   "items.noItems": "No items available.",
   "items.updated": "Item updated.",
+  "items.addNewItem": "Add New Item",
+  "items.itemNamePlaceholder": "e.g. Tennis Ball",
+  "items.codeAutoAssigned": "Item code will be assigned automatically.",
+  "items.created": "Item created.",
+  "items.specsCount": "{count} spec(s)",
 
   "language.label": "Language",
 } as const;
@@ -444,6 +450,7 @@ export const si: Record<TranslationKey, string> = {
   "sidebar.catalog": "නාමාවලිය",
   "sidebar.marketAnalysis": "වෙළඳපොළ විශ්ලේෂණය",
   "sidebar.createSpecsDoc": "පිරිවිතර ලේඛනය සාදන්න",
+  "sidebar.analysis": "විශ්ලේෂණය",
 
   "dashboard.greeting": "ආයුබෝවන් {name} 👋",
   "dashboard.monthlyTarget": "මාසික ඉලක්කය",
@@ -819,6 +826,11 @@ export const si: Record<TranslationKey, string> = {
   "items.generating": "සාදමින්…",
   "items.noItems": "අයිතම නොමැත.",
   "items.updated": "අයිතමය යාවත්කාලීන කරන ලදී.",
+  "items.addNewItem": "අලුත් අයිතමයක් එකතු කරන්න",
+  "items.itemNamePlaceholder": "උදා. Tennis Ball",
+  "items.codeAutoAssigned": "අයිතම කේතය ස්වයංක්‍රීයව පවරනු ලැබේ.",
+  "items.created": "අයිතමය සාදන ලදී.",
+  "items.specsCount": "පිරිවිතර {count}ක්",
 
   "language.label": "භාෂාව",
 };
