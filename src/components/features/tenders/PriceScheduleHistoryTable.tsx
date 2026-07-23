@@ -161,7 +161,6 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
               <th className="px-3 py-2 font-semibold">{t("common.procuringEntity")}</th>
               <th className="px-3 py-2 font-semibold">{t("common.closingDate")}</th>
               <th className="px-3 py-2 font-semibold">{t("common.totalValue")}</th>
-              <th className="px-3 py-2 font-semibold">{t("common.status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -171,23 +170,12 @@ export function PriceScheduleHistoryTable({ data }: PriceScheduleHistoryTablePro
                 <td className="px-3 py-2 text-ink">{row.entity}</td>
                 <td className="px-3 py-2 text-muted">{row.closingDate}</td>
                 <td className="px-3 py-2 text-ink">{formatLKR(row.totalValue)}</td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`rounded-none px-2.5 py-0.5 text-xs font-medium ${
-                      row.status === "Completed"
-                        ? "bg-active text-active-ink"
-                        : "border border-border text-muted"
-                    }`}
-                  >
-                    {row.status === "Completed" ? t("status.completed") : t("status.draft")}
-                  </span>
-                </td>
               </tr>
             ))}
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-muted">
+                <td colSpan={4} className="py-6 text-center text-muted">
                   {t("priceScheduleHistory.noResults", { query })}
                 </td>
               </tr>
