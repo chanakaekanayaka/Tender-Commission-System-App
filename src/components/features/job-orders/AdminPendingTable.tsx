@@ -4,44 +4,46 @@ import { useMemo, useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import { calculateDueDate, formatDateISO, isPaymentOverdue } from "@/lib/utils/dueDate";
 import { openPaymentReminderLetter } from "@/lib/utils/paymentReminderLetter";
-import { jobOrderMetadataByProcurement, procurementOptions } from "@/lib/mock/jobOrders.mock";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { PaymentReminderEmailModal } from "@/components/features/job-orders/PaymentReminderEmailModal";
 import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 
 interface AdminPendingTableProps {
   initialData: AdminPendingJobOrder[];
+  /** Real, from System Config — days after Bill Generated before a row counts as overdue. */
+  paymentDueDays: number;
 }
 
 /**
- * Admin's Pending Job Orders — every row here is, by construction, awaiting
- * payment from the procuring entity (the bill was already generated back on
- * the Active table). "Verify Payment" is the one next action; "Due Date" and
- * the overdue "Due" badge are derived from `defaultSystemConfig.paymentDueDays`
- * (System Configs) rather than stored per row.
+ * Admin's Pending Job Orders — every row here has a real generated bill (billDocument) that
+ * hasn't been payment-verified yet (paymentVerifiedAt is null). "Verify Payment" is the one next
+ * action; "Due Date" and the overdue "Due" badge are derived from the real System Config's
+ * paymentDueDays. Company name/accent color on the printed letter stay the one still-mock piece
+ * (System Config doesn't store those for real yet) — purely cosmetic, doesn't affect the numbers.
  */
-export function AdminPendingTable({ initialData }: AdminPendingTableProps) {
+export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingTableProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
   const [emailRowId, setEmailRowId] = useState<string | null>(null);
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
-  // Real clock — only the payment-due-days input feeding calculateDueDate is a mocked
-  // system-config value, per the task's "dummy date values" requirement.
   const today = useMemo(() => new Date(), []);
 
   const dueById = useMemo(() => {
     const map = new Map<string, { dueDate: Date; overdue: boolean }>();
     for (const row of rows) {
-      const dueDate = calculateDueDate(row.billGeneratedDate, defaultSystemConfig.paymentDueDays);
+      const dueDate = calculateDueDate(row.billGeneratedDate, paymentDueDays);
       map.set(row.id, { dueDate, overdue: isPaymentOverdue(dueDate, today) });
     }
     return map;
-  }, [rows, today]);
+  }, [rows, today, paymentDueDays]);
 
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -54,15 +56,28 @@ export function AdminPendingTable({ initialData }: AdminPendingTableProps) {
     return haystack.includes(q);
   });
 
-  // Mock-only: once payment is verified, the row leaves this list. A real
-  // backend would move it into Job Order History on the server side.
-  const handleVerifyPayment = (id: string) => {
-    setRows((prev) => prev.filter((row) => row.id !== id));
+  // Once verified, the row leaves this list — it stays that way for good since the query behind
+  // this page filters on paymentVerifiedAt: null.
+  const handleVerifyPayment = async (id: string) => {
+    setVerifyingId(id);
+    try {
+      const res = await fetch(`/api/job-orders/${id}/verify-payment`, { method: "PATCH" });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to verify payment.");
+      }
+      setRows((prev) => prev.filter((row) => row.id !== id));
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to verify payment.",
+        variant: "error",
+      });
+    } finally {
+      setVerifyingId(null);
+    }
   };
 
   const handlePrintLetter = (row: AdminPendingJobOrder) => {
-    const entity = procurementOptions.find((option) => option.procurementNo === row.procurementNo);
-    const metadata = jobOrderMetadataByProcurement[row.procurementNo];
     const dueDateLabel = formatDateISO(dueById.get(row.id)!.dueDate);
 
     openPaymentReminderLetter({
@@ -73,8 +88,8 @@ export function AdminPendingTable({ initialData }: AdminPendingTableProps) {
       dateFieldLabel: t("jobOrderPending.letterDate"),
       toFieldLabel: t("jobOrderPending.letterTo"),
       subjectLabel: t("jobOrderPending.letterSubject", { jobOrderNo: row.jobOrderNo }),
-      entityName: entity?.procuringEntity ?? row.procurementNo,
-      entityAddress: metadata?.address ?? "",
+      entityName: row.procuringEntity,
+      entityAddress: row.entityAddress,
       bodyText: t("jobOrderPending.emailTemplate", {
         jobOrderNo: row.jobOrderNo,
         procurementNo: row.procurementNo,
@@ -132,9 +147,10 @@ export function AdminPendingTable({ initialData }: AdminPendingTableProps) {
                   <button
                     type="button"
                     onClick={() => handleVerifyPayment(row.id)}
-                    className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90"
+                    disabled={verifyingId === row.id}
+                    className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {t("jobOrderPending.verifyPayment")}
+                    {verifyingId === row.id ? t("jobOrderPending.verifying") : t("jobOrderPending.verifyPayment")}
                   </button>
                   <button
                     type="button"
@@ -167,10 +183,12 @@ export function AdminPendingTable({ initialData }: AdminPendingTableProps) {
           procurementNo={emailRow.procurementNo}
           billAmount={emailRow.billAmount}
           dueDateLabel={formatDateISO(dueById.get(emailRow.id)!.dueDate)}
-          toEmail={jobOrderMetadataByProcurement[emailRow.procurementNo]?.email ?? ""}
+          toEmail={emailRow.entityEmail}
           onClose={() => setEmailRowId(null)}
         />
       )}
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

@@ -1,8 +1,30 @@
 import { T } from "@/components/features/i18n/T";
 import { ActiveJobOrdersTable } from "@/components/features/job-orders/ActiveJobOrdersTable";
-import { activeJobOrders } from "@/lib/mock/activeJobOrders.mock";
+import connectDB from "@/lib/db/connectDB";
+import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
+import { getCurrentUser } from "@/lib/auth/currentUser";
+import { getSignedImageUrl } from "@/lib/aws/s3";
+import type { ActiveJobOrder } from "@/shared/types/job-order.types";
 
-export default function StaffActiveJobOrdersPage() {
+export default async function StaffActiveJobOrdersPage() {
+  const user = await getCurrentUser();
+  await connectDB();
+  // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
+  const records = await JobOrderModel.find(user ? { createdBy: user._id } : {}).sort({ createdAt: -1 });
+
+  // No "billed" state exists on the model yet, so every Job Order stays in Active — Generate Bill
+  // just attaches a document here, it doesn't move the row anywhere else (yet).
+  const data: ActiveJobOrder[] = await Promise.all(
+    records.map(async (record) => ({
+      id: record._id.toString(),
+      jobOrderNo: record.jobOrderNo,
+      procurementNo: record.procurementNo,
+      completedStep: record.completedStep,
+      documentName: record.billDocument?.fileName,
+      documentUrl: record.billDocument ? await getSignedImageUrl(record.billDocument.s3Key) : undefined,
+    })),
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -11,7 +33,7 @@ export default function StaffActiveJobOrdersPage() {
         </h1>
       </div>
 
-      <ActiveJobOrdersTable initialData={activeJobOrders} />
+      <ActiveJobOrdersTable initialData={data} />
     </div>
   );
 }

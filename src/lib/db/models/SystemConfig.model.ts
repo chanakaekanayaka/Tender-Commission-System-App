@@ -4,6 +4,8 @@ export interface SystemConfigDocument extends Document {
   _id: Types.ObjectId;
   isVatRegistered: boolean;
   vatPercentage: number;
+  /** Days after a bill is generated before it's considered overdue — drives Job Order Pending's Due Date/"Due" badge. */
+  paymentDueDays: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -12,6 +14,7 @@ const systemConfigSchema = new Schema<SystemConfigDocument>(
   {
     isVatRegistered: { type: Boolean, default: false },
     vatPercentage: { type: Number, default: 15, min: 0, max: 100 },
+    paymentDueDays: { type: Number, default: 14, min: 0 },
   },
   { timestamps: true },
 );

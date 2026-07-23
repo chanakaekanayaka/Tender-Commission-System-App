@@ -14,6 +14,7 @@ export default async function PriceScheduleHistoryPage() {
   const data: PriceScheduleSummary[] = records.map((record) => ({
     id: record._id.toString(),
     procurementNo: record.procurementNo,
+    procurementTitle: record.procurementTitle,
     entity: record.procuringEntity,
     closingDate: record.closingDate.toISOString().slice(0, 10),
     totalValue: record.totalValue,

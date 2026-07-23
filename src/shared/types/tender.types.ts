@@ -18,6 +18,7 @@ export type PriceScheduleStatus = "Completed" | "Draft";
 export interface PriceScheduleSummary {
   id: string;
   procurementNo: string;
+  procurementTitle: string;
   entity: string;
   closingDate: string;
   totalValue: number;

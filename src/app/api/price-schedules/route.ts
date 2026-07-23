@@ -66,18 +66,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** Admin sees every Price Schedule; Staff sees only their own (AI_INSTRUCTIONS.md §3). */
+/**
+ * Admin sees every Price Schedule; Staff sees only their own (AI_INSTRUCTIONS.md §3) — that's the
+ * default "my records" listing used by the History page. But an explicit `?status=` filter (used
+ * by Job Order creation to browse won tenders to link) switches to company-wide visibility: once
+ * a tender is completed it's a shared record, not personal to whoever scanned it.
+ */
 export async function GET(request: NextRequest) {
   const { payload, error } = requireAuth(request);
   if (error) return error;
 
+  const status = request.nextUrl.searchParams.get("status");
+
   await connectDB();
-  const filter = payload.role === "Admin" ? {} : { createdBy: payload.userId };
+  const filter: Record<string, unknown> =
+    payload.role === "Admin" || status ? {} : { createdBy: payload.userId };
+  if (status === "Draft" || status === "Completed") {
+    filter.status = status;
+  }
   const records = await PriceScheduleModel.find(filter).sort({ createdAt: -1 });
 
   const summaries: PriceScheduleSummary[] = records.map((record) => ({
     id: record._id.toString(),
     procurementNo: record.procurementNo,
+    procurementTitle: record.procurementTitle,
     entity: record.procuringEntity,
     closingDate: record.closingDate.toISOString().slice(0, 10),
     totalValue: record.totalValue,

@@ -15,10 +15,11 @@ interface SystemConfigProps {
 }
 
 /**
- * VAT Registered / VAT Percentage are real, backed by PATCH /api/system-config. Company Name /
- * Logo / Payment Due Period are still mock-saved fields — nothing else in the app reads them yet.
- * Theme Color is the one other field with a real, live effect: on submit it's handed to
- * ThemeProvider, which repaints the sidebar on both portals immediately (see ThemeProvider.tsx).
+ * VAT Registered / VAT Percentage / Payment Due Period are real, backed by PATCH /api/system-config
+ * (Payment Due Period drives Job Order Pending's Due Date). Company Name / Logo are still
+ * mock-saved fields — nothing else in the app reads them yet. Theme Color is the one other field
+ * with a real, live effect: on submit it's handed to ThemeProvider, which repaints the sidebar on
+ * both portals immediately (see ThemeProvider.tsx).
  */
 export function SystemConfig({ initialValues }: SystemConfigProps) {
   const { t } = useTranslation();
@@ -55,6 +56,7 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
         body: JSON.stringify({
           isVatRegistered: values.isVatRegistered,
           vatPercentage: values.vatPercentage,
+          paymentDueDays: values.paymentDueDays,
         }),
       });
       const result = await res.json();

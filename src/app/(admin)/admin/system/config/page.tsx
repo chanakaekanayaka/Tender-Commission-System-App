@@ -21,6 +21,7 @@ export default async function AdminSystemConfigPage() {
           ...defaultSystemConfig,
           isVatRegistered: config.isVatRegistered,
           vatPercentage: config.vatPercentage,
+          paymentDueDays: config.paymentDueDays,
         }}
       />
     </div>

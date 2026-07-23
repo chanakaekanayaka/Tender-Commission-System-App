@@ -1,18 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  jobOrderMetadataByProcurement,
-  procurementLineItems,
-  procurementOptions,
-  staffOptions,
-} from "@/lib/mock/jobOrders.mock";
+import { jobOrderMetadataByProcurement, staffOptions } from "@/lib/mock/jobOrders.mock";
 import { calculateLineItemTotals, percentFromValue, valueFromPercent } from "@/lib/utils/pricing";
 import type {
   AmountInputMode,
+  JobOrderCompletionStep,
   JobOrderLineItem,
   JobOrderMetadata,
   OtherExpenseItem,
+  ProcurementOption,
   ReceiptItem,
 } from "@/shared/types/job-order.types";
 
@@ -32,7 +29,8 @@ interface JobOrderWizardValue {
   goToStep: (step: number) => void;
 
   procurementNo: string;
-  procurementOptionsList: typeof procurementOptions;
+  procurementOptionsList: ProcurementOption[];
+  isLoadingProcurementOptions: boolean;
   handleSelectProcurement: (procurementNo: string) => void;
 
   metadata: JobOrderMetadata;
@@ -42,6 +40,7 @@ interface JobOrderWizardValue {
 
   originalItems: JobOrderLineItem[];
   items: JobOrderLineItem[];
+  isLoadingItems: boolean;
   handleRemoveItem: (id: string) => void;
 
   assignedStaffId: string;
@@ -80,6 +79,13 @@ interface JobOrderWizardValue {
   profit: number;
 
   canProceedFromStep1: boolean;
+
+  jobOrderId: string | null;
+  isLoadingJobOrder: boolean;
+  isSavingDraft: boolean;
+  saveDraft: () => Promise<{ success: boolean; message: string }>;
+  isCompleting: boolean;
+  completeJobOrder: () => Promise<{ success: boolean; message: string }>;
 }
 
 const JobOrderWizardContext = createContext<JobOrderWizardValue | null>(null);
@@ -87,27 +93,64 @@ const JobOrderWizardContext = createContext<JobOrderWizardValue | null>(null);
 export function JobOrderWizardProvider({
   role,
   initialStep,
+  jobOrderId: initialJobOrderId,
   children,
 }: {
   role: "admin" | "staff";
   /** Lets a caller deep-link straight into a step (e.g. "Receipt Upload" → Step 2) instead of always starting fresh at Step 1. Clamped to 1-3. */
   initialStep?: number;
+  /** Resumes an already-created Job Order instead of starting a blank wizard — set when a caller
+   *  links in from the Active table (row's Job Order No, or its Receipt Upload action). */
+  jobOrderId?: string;
   children: ReactNode;
 }) {
   const [step, setStep] = useState(() => Math.min(3, Math.max(1, initialStep ?? 1)));
 
   const [procurementNo, setProcurementNo] = useState("");
+  const [procurementTitle, setProcurementTitle] = useState("");
+  const [procuringEntity, setProcuringEntity] = useState("");
+  const [procurementOptionsList, setProcurementOptionsList] = useState<ProcurementOption[]>([]);
+  const [isLoadingProcurementOptions, setIsLoadingProcurementOptions] = useState(true);
   const [metadata, setMetadata] = useState<JobOrderMetadata>(EMPTY_METADATA);
   const [isParsing, setIsParsing] = useState(false);
   const [originalItems, setOriginalItems] = useState<JobOrderLineItem[]>([]);
   const [items, setItems] = useState<JobOrderLineItem[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
   // Staff has no auth/session yet (AGENTS.md — UI-only mock phase), so a staff
   // user's own "assignment" is stood in for by the first mock staff option.
   const [assignedStaffId, setAssignedStaffId] = useState(role === "staff" ? staffOptions[0].id : "");
 
+  // Real, completed Price Schedules eligible to become a Job Order — a company-wide list, not
+  // scoped to who's logged in (see the GET /api/price-schedules?status= handling).
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/price-schedules?status=Completed");
+        const result = await res.json();
+        if (res.ok && result.success) {
+          setProcurementOptionsList(
+            result.data.map((row: { id: string; procurementNo: string; procurementTitle: string; entity: string }) => ({
+              id: row.id,
+              procurementNo: row.procurementNo,
+              procurementTitle: row.procurementTitle,
+              procuringEntity: row.entity,
+            })),
+          );
+        }
+      } finally {
+        setIsLoadingProcurementOptions(false);
+      }
+    })();
+  }, []);
+
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
   const [otherExpenses, setOtherExpenses] = useState<OtherExpenseItem[]>([]);
   const [expensesZeroed, setExpensesZeroed] = useState(false);
+
+  const [jobOrderId, setJobOrderId] = useState<string | null>(initialJobOrderId ?? null);
+  const [isLoadingJobOrder, setIsLoadingJobOrder] = useState(Boolean(initialJobOrderId));
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const [markupMode, setMarkupMode] = useState<AmountInputMode>("percentage");
   const [markupPercentInput, setMarkupPercentInput] = useState(0);
@@ -117,6 +160,65 @@ export function JobOrderWizardProvider({
   const [commissionPercentInput, setCommissionPercentInput] = useState(0);
   const [commissionValueInput, setCommissionValueInput] = useState(0);
   const [commissionZeroed, setCommissionZeroed] = useState(false);
+
+  // Resumes an already-created Job Order (linked in from the Active table) instead of starting a
+  // blank wizard — loads every field the record actually has, including a fresh signed preview URL
+  // per already-uploaded receipt (its original blob URL only ever existed in the browser that
+  // uploaded it). Runs once, since `initialJobOrderId` is set by the caller at mount and never changes.
+  useEffect(() => {
+    if (!initialJobOrderId) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/job-orders/${initialJobOrderId}`);
+        const result = await res.json();
+        if (!res.ok || !result.success) return;
+        const data = result.data;
+
+        setProcurementNo(data.procurementNo);
+        setProcurementTitle(data.procurementTitle);
+        setProcuringEntity(data.procuringEntity);
+        setAssignedStaffId(data.assignedStaffId);
+        setMetadata(data.metadata);
+
+        const toLineItems = (rows: { item: string; qty: number; unitPrice: number }[]): JobOrderLineItem[] =>
+          rows.map((row, index) => ({ id: `line-${index}`, item: row.item, qty: row.qty, unitPrice: row.unitPrice }));
+        setOriginalItems(toLineItems(data.originalLineItems));
+        setItems(toLineItems(data.lineItems));
+
+        setReceipts(
+          data.receipts.map(
+            (receipt: { fileName: string; amount: number; fileType: string; s3Key: string; previewUrl: string }) => ({
+              id: nextId("receipt"),
+              fileName: receipt.fileName,
+              amount: receipt.amount,
+              fileType: receipt.fileType,
+              previewUrl: receipt.previewUrl,
+              s3Key: receipt.s3Key,
+              isUploading: false,
+            }),
+          ),
+        );
+        setOtherExpenses(
+          data.otherExpenses.map((expense: { label: string; amount: number }) => ({
+            id: nextId("expense"),
+            label: expense.label,
+            amount: expense.amount,
+          })),
+        );
+        setExpensesZeroed(data.expensesZeroed);
+
+        setMarkupMode("value");
+        setMarkupValueInput(data.markupValue);
+        setCommissionZeroed(data.commissionZeroed);
+        setCommissionMode("value");
+        setCommissionValueInput(data.commissionZeroed ? 0 : data.commissionValue);
+      } finally {
+        setIsLoadingJobOrder(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-only, see comment above
+  }, []);
 
   // Revoke any remaining receipt object URLs when the wizard unmounts (e.g. the
   // user navigates away mid-flow) — a ref keeps this reading the latest list
@@ -139,6 +241,7 @@ export function JobOrderWizardProvider({
 
   const handleSelectProcurement = (nextProcurementNo: string) => {
     setProcurementNo(nextProcurementNo);
+    setJobOrderId(null);
     setMetadata(EMPTY_METADATA);
     setOriginalItems([]);
     setItems([]);
@@ -157,18 +260,46 @@ export function JobOrderWizardProvider({
     setCommissionPercentInput(0);
     setCommissionValueInput(0);
     setCommissionZeroed(false);
+
+    // Line items come straight from the linked Price Schedule the moment it's selected — no
+    // separate "parse" step needed for these, unlike the Source Document metadata below.
+    const option = procurementOptionsList.find((opt) => opt.procurementNo === nextProcurementNo);
+    if (!option) return;
+
+    setProcurementTitle(option.procurementTitle);
+    setProcuringEntity(option.procuringEntity);
+
+    setIsLoadingItems(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/price-schedules/${option.id}`);
+        const result = await res.json();
+        if (res.ok && result.success) {
+          const lineItems: JobOrderLineItem[] = result.data.lineItems.map(
+            (row: { item: string; qty: number; unitPrice: number }, index: number) => ({
+              id: `line-${index}`,
+              item: row.item,
+              qty: row.qty,
+              unitPrice: row.unitPrice,
+            }),
+          );
+          setOriginalItems(lineItems);
+          setItems(lineItems);
+        }
+      } finally {
+        setIsLoadingItems(false);
+      }
+    })();
   };
 
-  // Placeholder for the real Gemini OCR extraction (AI_INSTRUCTIONS.md Workflow A).
-  // No backend call exists yet — this simulates the delay and fills mock data
-  // keyed off the already-selected procurement no.
+  // Placeholder for the real document-scan extraction of the Job Order's own Source Document
+  // (still mock for now, per the user's request — that part comes once the real documents are
+  // ready) — Address/Telephone/Email/Note only, not line items, which the Price Schedule above
+  // already provides.
   const handleParse = () => {
     if (!procurementNo) return;
     setIsParsing(true);
     setTimeout(() => {
-      const lineItems = procurementLineItems[procurementNo] ?? [];
-      setOriginalItems(lineItems);
-      setItems(lineItems);
       setMetadata(jobOrderMetadataByProcurement[procurementNo] ?? EMPTY_METADATA);
       setIsParsing(false);
     }, 1200);
@@ -179,19 +310,51 @@ export function JobOrderWizardProvider({
 
   const handleRemoveItem = (id: string) => setItems((prev) => prev.filter((row) => row.id !== id));
 
+  // Uploads to S3 as soon as a file is dropped — s3Key (not previewUrl) is what actually
+  // persists once the Job Order itself is saved. previewUrl stays for the instant in-browser
+  // preview so the user isn't stuck waiting on the network round-trip just to see what they picked.
   const addReceipts = (files: File[]) => {
-    setReceipts((prev) => [
-      ...prev,
-      ...files.map((file) => ({
-        id: nextId("receipt"),
-        fileName: file.name,
-        amount: 0,
-        fileType: file.type,
-        // Real, in-browser preview of the actual uploaded file — must be revoked
-        // (below, and on procurement change / provider unmount) to avoid leaking it.
-        previewUrl: URL.createObjectURL(file),
-      })),
-    ]);
+    const newReceipts: ReceiptItem[] = files.map((file) => ({
+      id: nextId("receipt"),
+      fileName: file.name,
+      amount: 0,
+      fileType: file.type,
+      previewUrl: URL.createObjectURL(file),
+      s3Key: null,
+      isUploading: true,
+    }));
+
+    setReceipts((prev) => [...prev, ...newReceipts]);
+
+    newReceipts.forEach((receipt, index) => {
+      const file = files[index];
+      const formData = new FormData();
+      formData.append("file", file);
+
+      fetch("/api/job-orders/receipts", { method: "POST", body: formData })
+        .then(async (res) => {
+          const result = await res.json();
+          if (!res.ok || !result.success) {
+            throw new Error(result.message ?? "Failed to upload receipt.");
+          }
+          setReceipts((prev) =>
+            prev.map((r) => (r.id === receipt.id ? { ...r, s3Key: result.data.s3Key, isUploading: false } : r)),
+          );
+        })
+        .catch((err) => {
+          setReceipts((prev) =>
+            prev.map((r) =>
+              r.id === receipt.id
+                ? {
+                    ...r,
+                    isUploading: false,
+                    uploadError: err instanceof Error ? err.message : "Failed to upload receipt.",
+                  }
+                : r,
+            ),
+          );
+        });
+    });
   };
   const removeReceipt = (id: string) =>
     setReceipts((prev) => {
@@ -244,6 +407,81 @@ export function JobOrderWizardProvider({
 
   const profit = markupValue - (commissionValue + otherExpensesTotal);
 
+  const buildJobOrderPayload = (status: "Draft" | "Completed", completedStep: JobOrderCompletionStep) => ({
+      procurementNo,
+      procurementTitle,
+      procuringEntity,
+      assignedStaffId,
+      metadata,
+      originalLineItems: originalItems.map(({ item, qty, unitPrice }) => ({ item, qty, unitPrice })),
+      lineItems: items.map(({ item, qty, unitPrice }) => ({ item, qty, unitPrice })),
+      receipts: receipts
+        .filter((receipt): receipt is ReceiptItem & { s3Key: string } => Boolean(receipt.s3Key))
+        .map((receipt) => ({
+          fileName: receipt.fileName,
+          amount: receipt.amount,
+          fileType: receipt.fileType,
+          s3Key: receipt.s3Key,
+        })),
+      otherExpenses: otherExpenses.map(({ label, amount }) => ({ label, amount })),
+      expensesZeroed,
+      markupValue,
+      commissionValue,
+      commissionZeroed,
+      completedStep,
+      status,
+    });
+
+  const persistJobOrder = async (
+    payload: ReturnType<typeof buildJobOrderPayload>,
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = jobOrderId
+        ? await fetch(`/api/job-orders/${jobOrderId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/job-orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to save the job order.");
+      }
+      if (!jobOrderId) setJobOrderId(result.data.id);
+      return { success: true, message: result.message ?? "Saved." };
+    } catch (err) {
+      return { success: false, message: err instanceof Error ? err.message : "Failed to save the job order." };
+    }
+  };
+
+  // First "Save Draft" of a wizard session POSTs (no jobOrderId yet); every save after that
+  // PATCHes the same record instead of creating a duplicate — the unique procurementNo index
+  // would otherwise reject the second POST outright.
+  const saveDraft = async (): Promise<{ success: boolean; message: string }> => {
+    setIsSavingDraft(true);
+    try {
+      return await persistJobOrder(buildJobOrderPayload("Draft", step as JobOrderCompletionStep));
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  // The wizard's final action — always completedStep 3 regardless of which step the button was
+  // clicked from (Step 3 is the only step this is reachable on), status flips to "Completed" so
+  // the Active table's "Generate Bill" gate (completedStep === 3) unlocks.
+  const completeJobOrder = async (): Promise<{ success: boolean; message: string }> => {
+    setIsCompleting(true);
+    try {
+      return await persistJobOrder(buildJobOrderPayload("Completed", 3));
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
   const value: JobOrderWizardValue = {
     role,
     step,
@@ -252,7 +490,8 @@ export function JobOrderWizardProvider({
     goToStep,
 
     procurementNo,
-    procurementOptionsList: procurementOptions,
+    procurementOptionsList,
+    isLoadingProcurementOptions,
     handleSelectProcurement,
 
     metadata,
@@ -262,6 +501,7 @@ export function JobOrderWizardProvider({
 
     originalItems,
     items,
+    isLoadingItems,
     handleRemoveItem,
 
     assignedStaffId,
@@ -312,6 +552,13 @@ export function JobOrderWizardProvider({
     profit,
 
     canProceedFromStep1: Boolean(procurementNo) && items.length > 0,
+
+    jobOrderId,
+    isLoadingJobOrder,
+    isSavingDraft,
+    saveDraft,
+    isCompleting,
+    completeJobOrder,
   };
 
   return <JobOrderWizardContext.Provider value={value}>{children}</JobOrderWizardContext.Provider>;

@@ -9,16 +9,19 @@ import type {
 // Only completed Price Schedules are eligible to become a Job Order.
 export const procurementOptions: ProcurementOption[] = [
   {
+    id: "mock-1",
     procurementNo: "PROC/2026/001",
     procurementTitle: "Supply of Office Furniture",
     procuringEntity: "Ministry of Health",
   },
   {
+    id: "mock-2",
     procurementNo: "PROC/2026/002",
     procurementTitle: "Road Signage & Safety Equipment",
     procuringEntity: "Road Development Authority",
   },
   {
+    id: "mock-4",
     procurementNo: "PROC/2026/004",
     procurementTitle: "Substation Transformers",
     procuringEntity: "Ceylon Electricity Board",

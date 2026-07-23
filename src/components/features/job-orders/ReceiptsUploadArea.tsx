@@ -2,7 +2,10 @@
 
 import { UploadCloud } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+
+const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
 
 interface ReceiptsUploadAreaProps {
   onFilesAdded: (files: File[]) => void;
@@ -12,11 +15,18 @@ interface ReceiptsUploadAreaProps {
 export function ReceiptsUploadArea({ onFilesAdded }: ReceiptsUploadAreaProps) {
   const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return;
-    onFilesAdded(Array.from(fileList));
+    const files = Array.from(fileList);
+    const valid = files.filter((file) => ALLOWED_TYPES.includes(file.type));
+
+    if (valid.length < files.length) {
+      setToast({ message: t("jobOrderCreate.receiptInvalidType"), variant: "error" });
+    }
+    if (valid.length > 0) onFilesAdded(valid);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -47,7 +57,7 @@ export function ReceiptsUploadArea({ onFilesAdded }: ReceiptsUploadAreaProps) {
           ref={inputRef}
           type="file"
           multiple
-          accept=".pdf,.docx,image/*"
+          accept=".pdf,image/png,image/jpeg,image/webp"
           className="hidden"
           onChange={(e) => {
             addFiles(e.target.files);
@@ -57,9 +67,11 @@ export function ReceiptsUploadArea({ onFilesAdded }: ReceiptsUploadAreaProps) {
         <UploadCloud className="h-6 w-6 text-muted" aria-hidden />
         <p className="text-sm font-medium text-ink">{t("jobOrderCreate.receiptsDropHere")}</p>
         <p className="text-xs text-muted">
-          {t("dropzone.fileTypesHint")} <span className="underline">{t("dropzone.browseFiles")}</span>
+          {t("jobOrderCreate.receiptFileTypesHint")} <span className="underline">{t("dropzone.browseFiles")}</span>
         </p>
       </div>
+
+      {toast && <Toast message={toast.message} variant={toast.variant} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
