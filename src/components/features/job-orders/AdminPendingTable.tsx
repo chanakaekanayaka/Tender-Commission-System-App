@@ -10,7 +10,9 @@ import { formatLKR } from "@/lib/utils/currency";
 import { calculateDueDate, formatDateISO, isPaymentOverdue } from "@/lib/utils/dueDate";
 import { openPaymentReminderLetter } from "@/lib/utils/paymentReminderLetter";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
+import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import { PaymentReminderEmailModal } from "@/components/features/job-orders/PaymentReminderEmailModal";
+import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 
 interface AdminPendingTableProps {
@@ -31,6 +33,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
   const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
   const [emailRowId, setEmailRowId] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -101,6 +104,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
   };
 
   const emailRow = rows.find((row) => row.id === emailRowId) ?? null;
+  const previewRow = rows.find((row) => row.id === previewId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
@@ -136,6 +140,13 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
               ) : (
                 <StatusBadge label={t("jobOrderPending.paymentPending")} tone="amber" />
               ),
+          },
+          {
+            id: "paymentProof",
+            header: t("staffPendingJobOrders.paymentProof"),
+            cell: (row) => (
+              <JobOrderDocumentCell documentName={row.paymentProofName} onPreview={() => setPreviewId(row.id)} />
+            ),
           },
           {
             id: "actions",
@@ -187,6 +198,14 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
           onClose={() => setEmailRowId(null)}
         />
       )}
+
+      <DocumentPreviewModal
+        open={previewRow !== null}
+        onClose={() => setPreviewId(null)}
+        fileName={previewRow?.paymentProofName}
+        fileType={previewRow?.paymentProofType}
+        url={previewRow?.paymentProofUrl}
+      />
 
       {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>

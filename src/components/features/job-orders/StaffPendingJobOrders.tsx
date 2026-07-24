@@ -5,11 +5,14 @@ import { DataTable } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatDateISO } from "@/lib/utils/dueDate";
 import { formatLKR } from "@/lib/utils/currency";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { openPendingPaymentSummary } from "@/lib/utils/printPendingSummary";
+import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
+import { PaymentProofUploadCell } from "@/components/features/job-orders/PaymentProofUploadCell";
 import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
 
 interface StaffPendingJobOrdersProps {
@@ -17,18 +20,23 @@ interface StaffPendingJobOrdersProps {
 }
 
 /**
- * Staff's read-only monitoring view of bills Admin is still chasing payment for — nothing here is
- * actionable by Staff. Every row here has a real generated bill (billDocument) that hasn't been
- * payment-verified yet; once Admin verifies it, the row simply stops appearing here.
+ * Staff's monitoring view of bills Admin is still chasing payment for. The one action here is
+ * uploading payment proof (bank slip, cheque copy, etc.) once the entity actually pays, so Admin
+ * has real evidence before clicking Verify Payment. Every row here has a real generated bill that
+ * hasn't been payment-verified yet; once Admin verifies it, the row simply stops appearing here.
  */
 export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProps) {
   const { t } = useTranslation();
-  const [rows] = useState(initialData);
+  const [rows, setRows] = useState(initialData);
   const [query, setQuery] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const totalPending = useMemo(() => rows.reduce((sum, row) => sum + row.amount, 0), [rows]);
 
   const filtered = rows.filter((row) => row.jobOrderNo.toLowerCase().includes(query.trim().toLowerCase()));
+
+  const previewRow = rows.find((row) => row.id === previewId) ?? null;
 
   const handlePrintSummary = (row: StaffPendingJobOrder) => {
     openPendingPaymentSummary({
@@ -73,6 +81,28 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
               cell: (row) => row.dateSubmitted,
             },
             {
+              id: "paymentProof",
+              header: t("staffPendingJobOrders.paymentProof"),
+              cell: (row) => (
+                <PaymentProofUploadCell
+                  jobOrderId={row.id}
+                  fileName={row.paymentProofName}
+                  onPreview={() => setPreviewId(row.id)}
+                  onUploaded={({ fileName, fileType, previewUrl }) => {
+                    setRows((prev) =>
+                      prev.map((r) =>
+                        r.id === row.id
+                          ? { ...r, paymentProofName: fileName, paymentProofType: fileType, paymentProofUrl: previewUrl }
+                          : r,
+                      ),
+                    );
+                    setToast({ message: t("staffPendingJobOrders.proofUploaded"), variant: "success" });
+                  }}
+                  onError={(message) => setToast({ message, variant: "error" })}
+                />
+              ),
+            },
+            {
               id: "actions",
               header: t("common.actions"),
               cell: (row) => (
@@ -93,6 +123,16 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
           }
         />
       </div>
+
+      <DocumentPreviewModal
+        open={previewRow !== null}
+        onClose={() => setPreviewId(null)}
+        fileName={previewRow?.paymentProofName}
+        fileType={previewRow?.paymentProofType}
+        url={previewRow?.paymentProofUrl}
+      />
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

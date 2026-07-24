@@ -54,6 +54,10 @@ export interface ActiveJobOrder {
   jobOrderNo: string;
   procurementNo: string;
   completedStep: JobOrderCompletionStep;
+  /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
+   *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
+   *  already 3, so Generate Bill/Receipt Upload gating checks this, not completedStep alone. */
+  status: "Draft" | "Completed";
   documentName?: string;
   /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
   documentUrl?: string;
@@ -83,6 +87,10 @@ export interface AdminActiveJobOrder {
   jobOrderNo: string;
   procurementNo: string;
   completedStep: JobOrderCompletionStep;
+  /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
+   *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
+   *  already 3, so Generate Bill gating checks this, not completedStep alone. */
+  status: "Draft" | "Completed";
   documentName?: string;
   /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
   documentUrl?: string;
@@ -99,15 +107,25 @@ export interface AdminPendingJobOrder {
   /** From the job order's own Step 1 metadata — feeds the payment reminder letter/email. */
   entityAddress: string;
   entityEmail: string;
+  /** Evidence Staff uploaded that the entity actually paid — undefined until they do. */
+  paymentProofName?: string;
+  paymentProofType?: string;
+  /** Signed, short-lived S3 URL — only present alongside `paymentProofName`. */
+  paymentProofUrl?: string;
 }
 
-/** Staff's Pending Job Orders row — read-only: bills already generated, awaiting Admin's payment verification. */
+/** Staff's Pending Job Orders row — bills already generated, awaiting Admin's payment verification.
+ *  Staff's one action here is uploading proof once the entity actually pays. */
 export interface StaffPendingJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
   amount: number;
   dateSubmitted: string;
+  paymentProofName?: string;
+  paymentProofType?: string;
+  /** Signed, short-lived S3 URL — only present alongside `paymentProofName`. */
+  paymentProofUrl?: string;
 }
 
 /**

@@ -25,6 +25,13 @@ export interface JobOrderBillDocumentSubdoc {
   generatedAt: Date;
 }
 
+export interface JobOrderPaymentProofSubdoc {
+  fileName: string;
+  fileType: string;
+  s3Key: string;
+  uploadedAt: Date;
+}
+
 export interface JobOrderMetadataSubdoc {
   address: string;
   telephone: string;
@@ -56,9 +63,16 @@ export interface JobOrderDocument extends Document {
    *  never recomputed live, so it can't silently drift if the job order is later reopened and
    *  its line items/markup edited. Null until a bill has been generated. */
   billAmount: number | null;
+  /** Frozen alongside billAmount, same reasoning — markup minus commission and other expenses.
+   *  Drives Job Order History's Profit column once the job order is paid and closed out. */
+  profit: number | null;
   /** Set by PATCH /api/job-orders/[id]/verify-payment — null until Admin verifies payment came
    *  in. Drives Job Order Pending: a bill with a null value here is still awaiting payment. */
   paymentVerifiedAt: Date | null;
+  /** Set by POST /api/job-orders/[id]/payment-proof — Staff uploads evidence (bank slip, cheque
+   *  copy, etc.) once the procuring entity actually pays, so Admin has something to check before
+   *  clicking Verify Payment. Null until uploaded; uploading again replaces it. */
+  paymentProof: JobOrderPaymentProofSubdoc | null;
   expensesZeroed: boolean;
   markupValue: number;
   commissionValue: number;
@@ -116,6 +130,16 @@ const billDocumentSchema = new Schema<JobOrderBillDocumentSubdoc>(
   { _id: false },
 );
 
+const paymentProofSchema = new Schema<JobOrderPaymentProofSubdoc>(
+  {
+    fileName: { type: String, required: true },
+    fileType: { type: String, required: true },
+    s3Key: { type: String, required: true },
+    uploadedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const jobOrderSchema = new Schema<JobOrderDocument>(
   {
     jobOrderNo: { type: String, required: true, trim: true },
@@ -130,7 +154,9 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     otherExpenses: { type: [expenseSchema], default: [] },
     billDocument: { type: billDocumentSchema, default: null },
     billAmount: { type: Number, default: null },
+    profit: { type: Number, default: null },
     paymentVerifiedAt: { type: Date, default: null },
+    paymentProof: { type: paymentProofSchema, default: null },
     expensesZeroed: { type: Boolean, default: false },
     markupValue: { type: Number, required: true, min: 0 },
     commissionValue: { type: Number, required: true, min: 0 },

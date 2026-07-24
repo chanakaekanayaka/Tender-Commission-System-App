@@ -15,10 +15,11 @@ interface ActiveJobOrdersTableProps {
 }
 
 /**
- * Staff's Active Job Orders — tracks the same 3-step creation-wizard progress
- * as Admin's own Active table. "Receipt Upload" jumps into the wizard at Step
- * 2 (disabled once Step 3 is done); "Generate Bill" only enables once Step 3
- * (Markup & Summary) is done, and attaches a real generated PDF to the row.
+ * Staff's Active Job Orders — tracks the same 3-step creation-wizard progress as Admin's own
+ * Active table. "Receipt Upload" jumps into the wizard at Step 2 (disabled once the job order is
+ * genuinely done); "Generate Bill" only enables once the wizard's own Create Job Order has
+ * actually run (status: "Completed") — completedStep alone isn't enough, since Save Draft can
+ * leave completedStep at 3 while still Draft (e.g. Markup was never filled in).
  */
 export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps) {
   const { t } = useTranslation();
@@ -95,7 +96,7 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
                 </td>
                 <td className="py-2 pl-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    {row.completedStep === 3 ? (
+                    {row.status === "Completed" ? (
                       <span
                         className="inline-flex items-center gap-1.5 rounded-none border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted opacity-40"
                         title={t("activeJobOrders.receiptUploadDisabled")}
@@ -115,7 +116,7 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
 
                     <button
                       type="button"
-                      disabled={row.completedStep !== 3 || generatingId === row.id}
+                      disabled={row.status !== "Completed" || generatingId === row.id}
                       onClick={() => handleGenerateBill(row)}
                       className="inline-flex items-center gap-1.5 rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:opacity-40"
                     >

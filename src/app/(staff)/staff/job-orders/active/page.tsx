@@ -20,6 +20,7 @@ export default async function StaffActiveJobOrdersPage() {
       jobOrderNo: record.jobOrderNo,
       procurementNo: record.procurementNo,
       completedStep: record.completedStep,
+      status: record.status,
       documentName: record.billDocument?.fileName,
       documentUrl: record.billDocument ? await getSignedImageUrl(record.billDocument.s3Key) : undefined,
     })),

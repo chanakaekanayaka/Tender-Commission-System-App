@@ -199,6 +199,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // What the procuring entity actually owes — line items (already VAT-inclusive) plus markup.
     // Commission/other expenses are the company's own internal cost allocation, not billed onward.
     jobOrder.billAmount = newTotal + jobOrder.markupValue;
+    jobOrder.profit = profit;
     // Regenerating a bill (e.g. after fixing a mistake) resets payment verification — the old PDF
     // this was verified against no longer exists, so re-verifying against the new one is required.
     jobOrder.paymentVerifiedAt = null;

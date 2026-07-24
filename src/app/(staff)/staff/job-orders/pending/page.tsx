@@ -3,6 +3,7 @@ import { StaffPendingJobOrders } from "@/components/features/job-orders/StaffPen
 import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
+import { getSignedImageUrl } from "@/lib/aws/s3";
 import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
 
 export default async function StaffPendingJobOrdersPage() {
@@ -15,13 +16,18 @@ export default async function StaffPendingJobOrdersPage() {
     ...(user ? { createdBy: user._id } : {}),
   }).sort({ "billDocument.generatedAt": -1 });
 
-  const data: StaffPendingJobOrder[] = records.map((record) => ({
-    id: record._id.toString(),
-    jobOrderNo: record.jobOrderNo,
-    procurementNo: record.procurementNo,
-    amount: record.billAmount ?? 0,
-    dateSubmitted: record.billDocument!.generatedAt.toISOString().slice(0, 10),
-  }));
+  const data: StaffPendingJobOrder[] = await Promise.all(
+    records.map(async (record) => ({
+      id: record._id.toString(),
+      jobOrderNo: record.jobOrderNo,
+      procurementNo: record.procurementNo,
+      amount: record.billAmount ?? 0,
+      dateSubmitted: record.billDocument!.generatedAt.toISOString().slice(0, 10),
+      paymentProofName: record.paymentProof?.fileName,
+      paymentProofType: record.paymentProof?.fileType,
+      paymentProofUrl: record.paymentProof ? await getSignedImageUrl(record.paymentProof.s3Key) : undefined,
+    })),
+  );
 
   return (
     <div className="space-y-6">

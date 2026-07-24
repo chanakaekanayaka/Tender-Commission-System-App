@@ -36,6 +36,7 @@ function JobOrderStepperContent() {
     saveDraft,
     isCompleting,
     completeJobOrder,
+    markupValue,
   } = useJobOrderWizard();
   const [toast, setToast] = useState<ToastState | null>(null);
 
@@ -63,6 +64,14 @@ function JobOrderStepperContent() {
   };
 
   const handleSubmit = async () => {
+    // Markup left at 0 is almost always a forgotten field, not an intentional "no markup" — unlike
+    // Commission, there's no explicit "set to 0" opt-in for it, so a 0 here blocks completion
+    // instead of silently letting a job order through with negative profit baked in.
+    if (markupValue <= 0) {
+      setToast({ message: t("jobOrderCreate.markupRequired"), variant: "error" });
+      return;
+    }
+
     const result = await completeJobOrder();
     if (result.success) {
       router.push(`/${role}/job-orders/active`);

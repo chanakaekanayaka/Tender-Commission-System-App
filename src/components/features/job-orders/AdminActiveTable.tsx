@@ -9,24 +9,19 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge, type BadgeTone } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
-import type { AdminActiveJobOrder, JobOrderCompletionStep } from "@/shared/types/job-order.types";
+import type { AdminActiveJobOrder } from "@/shared/types/job-order.types";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 
 interface AdminActiveTableProps {
   initialData: AdminActiveJobOrder[];
 }
 
-const STEP_TONE: Record<JobOrderCompletionStep, BadgeTone> = {
-  1: "blue",
-  2: "blue",
-  3: "green",
-};
-
 /**
- * Admin's Active Job Orders — status reflects creation-wizard progress (Step
- * 1/2/3), not the bill-document workflow Staff sees. "Generate Bill" is the
- * one action Admin needs here, and only once all 3 steps are done; the
- * Uploaded Document column/preview is unchanged from the original table.
+ * Admin's Active Job Orders — status reflects creation-wizard progress (Step 1/2/3), not the
+ * bill-document workflow Staff sees. "Generate Bill" is the one action Admin needs here, and only
+ * once the wizard's own Create Job Order has actually run (status: "Completed") — completedStep
+ * alone isn't enough, since Save Draft can leave completedStep at 3 while still Draft (e.g. Markup
+ * was never filled in) — the Uploaded Document column/preview is unchanged from the original table.
  */
 export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   const { t } = useTranslation();
@@ -36,12 +31,15 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const stepLabel = (step: JobOrderCompletionStep) =>
-    step === 1
-      ? t("activeJobOrders.step1Complete")
-      : step === 2
-        ? t("activeJobOrders.step2Complete")
-        : t("activeJobOrders.readyForBilling");
+  const statusTone = (row: AdminActiveJobOrder): BadgeTone => (row.status === "Completed" ? "green" : "blue");
+  const statusLabel = (row: AdminActiveJobOrder) =>
+    row.status === "Completed"
+      ? t("activeJobOrders.readyForBilling")
+      : row.completedStep === 1
+        ? t("activeJobOrders.step1Complete")
+        : row.completedStep === 2
+          ? t("activeJobOrders.step2Complete")
+          : t("activeJobOrders.step3InProgress");
 
   const filtered = rows.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -49,7 +47,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
 
     // Searches both the raw step number and its translated label, so the
     // query matches whatever the user actually sees in the badge.
-    const haystack = [row.jobOrderNo, row.procurementNo, String(row.completedStep), stepLabel(row.completedStep)]
+    const haystack = [row.jobOrderNo, row.procurementNo, String(row.completedStep), statusLabel(row)]
       .join(" ")
       .toLowerCase();
 
@@ -107,9 +105,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
           {
             id: "status",
             header: t("common.status"),
-            cell: (row) => (
-              <StatusBadge label={stepLabel(row.completedStep)} tone={STEP_TONE[row.completedStep]} />
-            ),
+            cell: (row) => <StatusBadge label={statusLabel(row)} tone={statusTone(row)} />,
           },
           {
             id: "document",
@@ -122,7 +118,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
             id: "actions",
             header: t("common.actions"),
             cell: (row) =>
-              row.completedStep === 3 ? (
+              row.status === "Completed" ? (
                 <button
                   type="button"
                   onClick={() => handleGenerateBill(row.id)}
