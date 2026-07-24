@@ -1,6 +1,10 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Stepper } from "@/components/ui/Stepper";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import {
   JobOrderWizardProvider,
   useJobOrderWizard,
@@ -13,11 +17,37 @@ import { useTranslation } from "@/context/LanguageContext";
 interface JobOrderStepperProps {
   role: "admin" | "staff";
   initialStep?: number;
+  jobOrderId?: string;
 }
 
 function JobOrderStepperContent() {
   const { t } = useTranslation();
-  const { step, goToStep, goNext, goBack, canProceedFromStep1, procurementNo } = useJobOrderWizard();
+  const router = useRouter();
+  const {
+    role,
+    step,
+    goToStep,
+    goNext,
+    goBack,
+    canProceedFromStep1,
+    procurementNo,
+    isLoadingJobOrder,
+    isSavingDraft,
+    saveDraft,
+    isCompleting,
+    completeJobOrder,
+    markupValue,
+  } = useJobOrderWizard();
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  if (isLoadingJobOrder) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-none border border-border bg-card p-10 text-sm text-muted">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        {t("jobOrderCreate.loadingJobOrder")}
+      </div>
+    );
+  }
 
   const steps = [
     { id: 1, label: t("jobOrderCreate.step1Label") },
@@ -25,15 +55,29 @@ function JobOrderStepperContent() {
     { id: 3, label: t("jobOrderCreate.step3Label") },
   ];
 
-  const handleSaveDraft = () => {
-    // TODO: POST the in-progress wizard state to the backend once a Job Orders
-    // draft API exists — this is a UI-only mock phase (AGENTS.md).
-    console.log("Save draft — job order wizard state is not yet persisted to a backend.");
+  const handleSaveDraft = async () => {
+    const result = await saveDraft();
+    setToast({
+      message: result.success ? t("jobOrderCreate.draftSaved") : result.message,
+      variant: result.success ? "success" : "error",
+    });
   };
 
-  const handleSubmit = () => {
-    // TODO: POST the completed job order once that route exists.
-    console.log("Create job order — no backend wired up yet.");
+  const handleSubmit = async () => {
+    // Markup left at 0 is almost always a forgotten field, not an intentional "no markup" — unlike
+    // Commission, there's no explicit "set to 0" opt-in for it, so a 0 here blocks completion
+    // instead of silently letting a job order through with negative profit baked in.
+    if (markupValue <= 0) {
+      setToast({ message: t("jobOrderCreate.markupRequired"), variant: "error" });
+      return;
+    }
+
+    const result = await completeJobOrder();
+    if (result.success) {
+      router.push(`/${role}/job-orders/active`);
+      return;
+    }
+    setToast({ message: result.message, variant: "error" });
   };
 
   return (
@@ -61,9 +105,10 @@ function JobOrderStepperContent() {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
+            disabled={!procurementNo || isSavingDraft || isCompleting}
+            className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {t("jobOrderCreate.saveDraft")}
+            {isSavingDraft ? t("jobOrderCreate.savingDraft") : t("jobOrderCreate.saveDraft")}
           </button>
 
           {step < 3 ? (
@@ -79,21 +124,23 @@ function JobOrderStepperContent() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!procurementNo}
+              disabled={!procurementNo || isSavingDraft || isCompleting}
               className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {t("jobOrderCreate.createJobOrder")}
+              {isCompleting ? t("jobOrderCreate.creatingJobOrder") : t("jobOrderCreate.createJobOrder")}
             </button>
           )}
         </div>
       </div>
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }
 
-export function JobOrderStepper({ role, initialStep }: JobOrderStepperProps) {
+export function JobOrderStepper({ role, initialStep, jobOrderId }: JobOrderStepperProps) {
   return (
-    <JobOrderWizardProvider role={role} initialStep={initialStep}>
+    <JobOrderWizardProvider role={role} initialStep={initialStep} jobOrderId={jobOrderId}>
       <JobOrderStepperContent />
     </JobOrderWizardProvider>
   );

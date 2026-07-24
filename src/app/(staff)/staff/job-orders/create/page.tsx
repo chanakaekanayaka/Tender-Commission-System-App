@@ -2,11 +2,11 @@ import { T } from "@/components/features/i18n/T";
 import { JobOrderStepper } from "@/components/features/job-orders/JobOrderStepper";
 
 interface StaffJobOrderCreatePageProps {
-  searchParams: Promise<{ step?: string }>;
+  searchParams: Promise<{ step?: string; id?: string }>;
 }
 
 export default async function StaffJobOrderCreatePage({ searchParams }: StaffJobOrderCreatePageProps) {
-  const { step } = await searchParams;
+  const { step, id } = await searchParams;
   const parsedStep = step ? Number(step) : NaN;
   const initialStep = Number.isFinite(parsedStep) ? parsedStep : undefined;
 
@@ -18,7 +18,7 @@ export default async function StaffJobOrderCreatePage({ searchParams }: StaffJob
         </h1>
       </div>
 
-      <JobOrderStepper role="staff" initialStep={initialStep} />
+      <JobOrderStepper role="staff" initialStep={initialStep} jobOrderId={id} />
     </div>
   );
 }

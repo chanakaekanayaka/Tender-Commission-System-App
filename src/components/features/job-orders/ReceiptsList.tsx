@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { FormField } from "@/components/ui/FormField";
 import { ReceiptPreviewModal } from "@/components/features/job-orders/ReceiptPreviewModal";
@@ -45,6 +45,15 @@ export function ReceiptsList({ receipts, onAmountChange, onRemove }: ReceiptsLis
                   <span className="truncate">{receipt.fileName}</span>
                   <Eye className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden />
                 </button>
+                {receipt.isUploading && (
+                  <span className="mt-1 flex items-center gap-1.5 px-3 text-xs text-muted">
+                    <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                    {t("jobOrderCreate.receiptUploading")}
+                  </span>
+                )}
+                {receipt.uploadError && (
+                  <span className="mt-1 block px-3 text-xs text-red-600">{receipt.uploadError}</span>
+                )}
               </div>
               <FormField
                 label={t("jobOrderCreate.expenseAmount")}

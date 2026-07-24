@@ -28,6 +28,11 @@ export interface ReceiptItem {
   fileType: string;
   /** `URL.createObjectURL(file)` — a real, in-browser preview of what was actually uploaded (this is genuine user file data, unlike the mock document names elsewhere in Job Orders). Must be revoked when the receipt is removed or replaced. */
   previewUrl: string;
+  /** S3 key once the real upload (POST /api/job-orders/receipts) finishes — `null` while uploading
+   *  or if the upload failed. This is what actually persists; `previewUrl` never leaves the browser. */
+  s3Key: string | null;
+  isUploading: boolean;
+  uploadError?: string;
 }
 
 export interface StaffOption {
@@ -36,6 +41,8 @@ export interface StaffOption {
 }
 
 export interface ProcurementOption {
+  /** The linked Price Schedule's Mongo id — used to fetch its full line items on selection. */
+  id: string;
   procurementNo: string;
   procurementTitle: string;
   procuringEntity: string;
@@ -47,7 +54,13 @@ export interface ActiveJobOrder {
   jobOrderNo: string;
   procurementNo: string;
   completedStep: JobOrderCompletionStep;
+  /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
+   *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
+   *  already 3, so Generate Bill/Receipt Upload gating checks this, not completedStep alone. */
+  status: "Draft" | "Completed";
   documentName?: string;
+  /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
+  documentUrl?: string;
 }
 
 export interface JobOrderHistoryRecord {
@@ -74,7 +87,13 @@ export interface AdminActiveJobOrder {
   jobOrderNo: string;
   procurementNo: string;
   completedStep: JobOrderCompletionStep;
+  /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
+   *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
+   *  already 3, so Generate Bill gating checks this, not completedStep alone. */
+  status: "Draft" | "Completed";
   documentName?: string;
+  /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
+  documentUrl?: string;
 }
 
 /** Admin's Pending Job Orders row — the bill has been generated and is awaiting payment from the procuring entity. */
@@ -82,21 +101,31 @@ export interface AdminPendingJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
+  procuringEntity: string;
   billAmount: number;
   billGeneratedDate: string;
+  /** From the job order's own Step 1 metadata — feeds the payment reminder letter/email. */
+  entityAddress: string;
+  entityEmail: string;
+  /** Evidence Staff uploaded that the entity actually paid — undefined until they do. */
+  paymentProofName?: string;
+  paymentProofType?: string;
+  /** Signed, short-lived S3 URL — only present alongside `paymentProofName`. */
+  paymentProofUrl?: string;
 }
 
-/** Staff's read-only view of where a submitted bill is in Admin's review/payment pipeline. */
-export type PaymentProcessStage = "Submitted" | "Pending Admin Approval" | "Payment Uploaded";
-
-/** Staff's Pending Job Orders row — bills already submitted for billing that haven't cleared payment yet. */
+/** Staff's Pending Job Orders row — bills already generated, awaiting Admin's payment verification.
+ *  Staff's one action here is uploading proof once the entity actually pays. */
 export interface StaffPendingJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
   amount: number;
   dateSubmitted: string;
-  stage: PaymentProcessStage;
+  paymentProofName?: string;
+  paymentProofType?: string;
+  /** Signed, short-lived S3 URL — only present alongside `paymentProofName`. */
+  paymentProofUrl?: string;
 }
 
 /**

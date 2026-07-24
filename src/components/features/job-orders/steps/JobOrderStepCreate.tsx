@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { JobOrderDocumentDropzone } from "@/components/features/job-orders/JobOrderDocumentDropzone";
 import { AssignStaffSelect } from "@/components/features/job-orders/AssignStaffSelect";
 import { JobOrderLineItemsTable } from "@/components/features/job-orders/JobOrderLineItemsTable";
@@ -14,12 +15,14 @@ export function JobOrderStepCreate() {
     role,
     procurementNo,
     procurementOptionsList,
+    isLoadingProcurementOptions,
     handleSelectProcurement,
     metadata,
     isParsing,
     handleParse,
     updateMetadataField,
     items,
+    isLoadingItems,
     handleRemoveItem,
     assignedStaffId,
     setAssignedStaffId,
@@ -33,6 +36,7 @@ export function JobOrderStepCreate() {
         <ProcurementSelector
           procurementNo={procurementNo}
           options={procurementOptionsList}
+          isLoading={isLoadingProcurementOptions}
           onSelect={handleSelectProcurement}
         />
         <AssignStaffSelect
@@ -58,7 +62,14 @@ export function JobOrderStepCreate() {
         <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
           {t("jobOrderCreate.lineItemsHeading")}
         </p>
-        <JobOrderLineItemsTable items={items} onRemove={handleRemoveItem} />
+        {isLoadingItems ? (
+          <div className="flex items-center justify-center gap-2 rounded-none border border-border bg-card p-6 text-sm text-muted">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            {t("jobOrderCreate.loadingItems")}
+          </div>
+        ) : (
+          <JobOrderLineItemsTable items={items} onRemove={handleRemoveItem} />
+        )}
       </div>
     </>
   );
