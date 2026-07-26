@@ -9,7 +9,7 @@ import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 export default async function AdminPendingJobOrdersPage() {
   await connectDB();
   const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billDocument: { $ne: null }, paymentVerifiedAt: null }).sort({
+    JobOrderModel.find({ billVerifiedAt: { $ne: null }, paymentVerifiedAt: null }).sort({
       "billDocument.generatedAt": -1,
     }),
     getOrCreateSystemConfig(),

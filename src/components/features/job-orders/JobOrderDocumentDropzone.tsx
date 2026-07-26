@@ -2,63 +2,55 @@
 
 import { CheckCircle2, Loader2, UploadCloud } from "lucide-react";
 import { useRef, useState, type DragEvent } from "react";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 
-type Status = "idle" | "dragging" | "extracting" | "done";
+const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
 
 interface JobOrderDocumentDropzoneProps {
+  fileName?: string;
+  isUploading?: boolean;
+  uploadError?: string;
+  onFileSelected: (file: File) => void;
+  onRemove: () => void;
   onParse?: () => void;
   isParsing?: boolean;
 }
 
-/** Split out from tenders/DocumentDropzone.tsx when that component switched to a real Textract
- *  upload flow — Job Orders' own creation wizard is still a separate, UI-only mock pass (no
- *  backend for this feature yet), so it keeps the old simulated-progress behavior unchanged. */
-export function JobOrderDocumentDropzone({ onParse, isParsing = false }: JobOrderDocumentDropzoneProps) {
+/** Real S3 upload for the Job Order's own Source Document (PDF or image) — no OCR/parsing wired up
+ *  yet, so "Scan" (if provided) stays a separate, still-mock action layered on top of a genuinely
+ *  uploaded file. */
+export function JobOrderDocumentDropzone({
+  fileName,
+  isUploading = false,
+  uploadError,
+  onFileSelected,
+  onRemove,
+  onParse,
+  isParsing = false,
+}: JobOrderDocumentDropzoneProps) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<Status>("idle");
-  const [fileName, setFileName] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const simulateExtraction = (name: string) => {
-    setFileName(name);
-    setStatus("extracting");
-    setProgress(0);
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + 20;
-        if (next >= 100) {
-          clearInterval(interval);
-          setStatus("done");
-          return 100;
-        }
-        return next;
-      });
-    }, 300);
-  };
+  const hasFile = Boolean(fileName);
+  const canBrowse = !hasFile && !isUploading;
 
   const handleFile = (file: File | undefined) => {
-    if (file) simulateExtraction(file.name);
+    if (!file) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setToast({ message: t("jobOrderCreate.sourceDocumentInvalidType"), variant: "error" });
+      return;
+    }
+    onFileSelected(file);
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setStatus((s) => (s === "dragging" ? "idle" : s));
-    handleFile(e.dataTransfer.files[0]);
+    setIsDragging(false);
+    if (canBrowse) handleFile(e.dataTransfer.files[0]);
   };
-
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    if (status === "idle") setStatus("dragging");
-  };
-
-  const handleDragLeave = () => {
-    if (status === "dragging") setStatus("idle");
-  };
-
-  const canBrowse = status === "idle" || status === "dragging";
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
@@ -68,46 +60,59 @@ export function JobOrderDocumentDropzone({ onParse, isParsing = false }: JobOrde
 
       <div
         onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (canBrowse) setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
         onClick={() => canBrowse && inputRef.current?.click()}
         className={`flex min-h-56 flex-col items-center justify-center gap-3 rounded-none border-2 border-dashed p-6 text-center transition-colors ${
-          status === "dragging" ? "border-active bg-active/5" : "border-border"
+          isDragging ? "border-active bg-active/5" : "border-border"
         } ${canBrowse ? "cursor-pointer" : ""}`}
       >
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.docx,image/*"
+          accept=".pdf,image/png,image/jpeg,image/webp"
           className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
+          onChange={(e) => {
+            handleFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
         />
 
-        {status === "extracting" ? (
+        {isUploading ? (
           <>
             <Loader2 className="h-6 w-6 animate-spin text-muted" aria-hidden />
             <p className="text-sm font-medium text-ink">
-              {t("dropzone.extracting", { fileName: fileName ?? "" })}
+              {t("jobOrderCreate.sourceDocumentUploading", { fileName: fileName ?? "" })}
             </p>
-            <div className="h-2 w-40 overflow-hidden rounded-none bg-border">
-              <div
-                className="h-full rounded-none bg-active transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted">{progress}%</p>
           </>
-        ) : status === "done" ? (
+        ) : hasFile && !uploadError ? (
           <>
             <CheckCircle2 className="h-6 w-6 text-ink" aria-hidden />
             <p className="text-sm font-medium text-ink">{fileName}</p>
-            <p className="text-xs text-muted">{t("dropzone.extractedSuccessfully")}</p>
+            <p className="text-xs text-muted">{t("jobOrderCreate.sourceDocumentUploaded")}</p>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                setStatus("idle");
-                setFileName(null);
+                onRemove();
+              }}
+              className="text-xs text-muted underline hover:text-ink"
+            >
+              {t("dropzone.replaceFile")}
+            </button>
+          </>
+        ) : uploadError ? (
+          <>
+            <p className="text-sm font-medium text-ink">{fileName}</p>
+            <p className="text-xs text-red-600">{uploadError}</p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove();
               }}
               className="text-xs text-muted underline hover:text-ink"
             >
@@ -119,7 +124,7 @@ export function JobOrderDocumentDropzone({ onParse, isParsing = false }: JobOrde
             <UploadCloud className="h-6 w-6 text-muted" aria-hidden />
             <p className="text-sm font-medium text-ink">{t("dropzone.dropHere")}</p>
             <p className="text-xs text-muted">
-              {t("dropzone.fileTypesHint")}{" "}
+              {t("jobOrderCreate.sourceDocumentFileTypesHint")}{" "}
               <span className="underline">{t("dropzone.browseFiles")}</span>
             </p>
           </>
@@ -143,6 +148,8 @@ export function JobOrderDocumentDropzone({ onParse, isParsing = false }: JobOrde
           )}
         </button>
       )}
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

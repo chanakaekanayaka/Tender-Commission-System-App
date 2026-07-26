@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { jobOrderMetadataByProcurement, staffOptions } from "@/lib/mock/jobOrders.mock";
+import { jobOrderMetadataByProcurement } from "@/lib/mock/jobOrders.mock";
 import { calculateLineItemTotals, percentFromValue, valueFromPercent } from "@/lib/utils/pricing";
 import type {
   AmountInputMode,
@@ -11,12 +11,14 @@ import type {
   OtherExpenseItem,
   ProcurementOption,
   ReceiptItem,
+  SourceDocumentState,
+  StaffOption,
 } from "@/shared/types/job-order.types";
 
 const EMPTY_METADATA: JobOrderMetadata = { address: "", telephone: "", email: "", note: "" };
 
-const sumSubTotals = (items: JobOrderLineItem[]) =>
-  items.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice).subTotal, 0);
+const sumSubTotals = (items: JobOrderLineItem[], vatRate: number) =>
+  items.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal, 0);
 
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}-${++idSeq}`;
@@ -29,9 +31,18 @@ interface JobOrderWizardValue {
   goToStep: (step: number) => void;
 
   procurementNo: string;
+  procuringEntity: string;
   procurementOptionsList: ProcurementOption[];
   isLoadingProcurementOptions: boolean;
   handleSelectProcurement: (procurementNo: string) => void;
+
+  /** Real, from System Config — 0 unless Admin has VAT registration enabled (never the old
+   *  hardcoded 15% default). Drives every line-item VAT/subtotal shown or saved in this wizard. */
+  vatRate: number;
+
+  sourceDocument: SourceDocumentState | null;
+  uploadSourceDocument: (file: File) => void;
+  removeSourceDocument: () => void;
 
   metadata: JobOrderMetadata;
   isParsing: boolean;
@@ -45,7 +56,8 @@ interface JobOrderWizardValue {
 
   assignedStaffId: string;
   setAssignedStaffId: (id: string) => void;
-  staffOptionsList: typeof staffOptions;
+  staffOptionsList: StaffOption[];
+  isLoadingStaffOptions: boolean;
 
   receipts: ReceiptItem[];
   addReceipts: (files: File[]) => void;
@@ -76,6 +88,9 @@ interface JobOrderWizardValue {
   receiptsTotal: number;
   manualExpensesTotal: number;
   otherExpensesTotal: number;
+  /** Original Total minus Other Expenses — the base Markup/Sales Commission are entered as a
+   *  value or percentage of, and the starting point for the final `profit` figure. */
+  profitBase: number;
   profit: number;
 
   canProceedFromStep1: boolean;
@@ -111,14 +126,60 @@ export function JobOrderWizardProvider({
   const [procuringEntity, setProcuringEntity] = useState("");
   const [procurementOptionsList, setProcurementOptionsList] = useState<ProcurementOption[]>([]);
   const [isLoadingProcurementOptions, setIsLoadingProcurementOptions] = useState(true);
+  const [sourceDocument, setSourceDocument] = useState<SourceDocumentState | null>(null);
   const [metadata, setMetadata] = useState<JobOrderMetadata>(EMPTY_METADATA);
   const [isParsing, setIsParsing] = useState(false);
   const [originalItems, setOriginalItems] = useState<JobOrderLineItem[]>([]);
   const [items, setItems] = useState<JobOrderLineItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
-  // Staff has no auth/session yet (AGENTS.md — UI-only mock phase), so a staff
-  // user's own "assignment" is stood in for by the first mock staff option.
-  const [assignedStaffId, setAssignedStaffId] = useState(role === "staff" ? staffOptions[0].id : "");
+  const [assignedStaffId, setAssignedStaffId] = useState("");
+  const [staffOptionsList, setStaffOptionsList] = useState<StaffOption[]>([]);
+  const [isLoadingStaffOptions, setIsLoadingStaffOptions] = useState(true);
+  // 0 (no VAT) until System Config says otherwise — never the old hardcoded 15% default.
+  const [vatRate, setVatRate] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/system-config");
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setVatRate(result.data.isVatRegistered ? result.data.vatPercentage / 100 : 0);
+      }
+    })();
+  }, []);
+
+  // Admin picks from every active Staff account to assign the job order to; Staff can't reassign
+  // at all (AssignStaffSelect renders their name read-only), so they only ever need themselves —
+  // which also fills in the id a resumed Staff session's own assignedStaffId should already match.
+  useEffect(() => {
+    (async () => {
+      try {
+        if (role === "admin") {
+          const res = await fetch("/api/users?role=Staff&status=Active");
+          const result = await res.json();
+          if (res.ok && result.success) {
+            setStaffOptionsList(
+              result.data.map((user: { id: string; firstName: string; lastName: string }) => ({
+                id: user.id,
+                name: `${user.firstName} ${user.lastName}`,
+              })),
+            );
+          }
+        } else {
+          const res = await fetch("/api/auth/me");
+          const result = await res.json();
+          if (res.ok && result.success) {
+            const me = { id: result.data.id, name: `${result.data.firstName} ${result.data.lastName}` };
+            setStaffOptionsList([me]);
+            setAssignedStaffId(me.id);
+          }
+        }
+      } finally {
+        setIsLoadingStaffOptions(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- role is fixed for the wizard's lifetime
+  }, []);
 
   // Real, completed Price Schedules eligible to become a Job Order — a company-wide list, not
   // scoped to who's logged in (see the GET /api/price-schedules?status= handling).
@@ -161,6 +222,15 @@ export function JobOrderWizardProvider({
   const [commissionValueInput, setCommissionValueInput] = useState(0);
   const [commissionZeroed, setCommissionZeroed] = useState(false);
 
+  // Markup and Sales Commission split 100% of the profit base between the company and the sales
+  // agent — only one side is ever independently typed at a time, the other is always its
+  // complement. Admin can drive the split from either side; Staff can only ever drive it from
+  // Commission (Markup is locked read-only for them — see JobOrderStepMarkup), so their split
+  // basis starts there and never has a reason to change.
+  const [profitSplitBasis, setProfitSplitBasis] = useState<"markup" | "commission">(
+    role === "staff" ? "commission" : "markup",
+  );
+
   // Resumes an already-created Job Order (linked in from the Active table) instead of starting a
   // blank wizard — loads every field the record actually has, including a fresh signed preview URL
   // per already-uploaded receipt (its original blob URL only ever existed in the browser that
@@ -180,6 +250,15 @@ export function JobOrderWizardProvider({
         setProcuringEntity(data.procuringEntity);
         setAssignedStaffId(data.assignedStaffId);
         setMetadata(data.metadata);
+        if (data.sourceDocument) {
+          setSourceDocument({
+            fileName: data.sourceDocument.fileName,
+            fileType: data.sourceDocument.fileType,
+            s3Key: data.sourceDocument.s3Key,
+            uploadedAt: data.sourceDocument.uploadedAt,
+            isUploading: false,
+          });
+        }
 
         const toLineItems = (rows: { item: string; qty: number; unitPrice: number }[]): JobOrderLineItem[] =>
           rows.map((row, index) => ({ id: `line-${index}`, item: row.item, qty: row.qty, unitPrice: row.unitPrice }));
@@ -210,9 +289,9 @@ export function JobOrderWizardProvider({
 
         setMarkupMode("value");
         setMarkupValueInput(data.markupValue);
-        setCommissionZeroed(data.commissionZeroed);
         setCommissionMode("value");
         setCommissionValueInput(data.commissionZeroed ? 0 : data.commissionValue);
+        setCommissionZeroed(data.commissionZeroed);
       } finally {
         setIsLoadingJobOrder(false);
       }
@@ -242,6 +321,7 @@ export function JobOrderWizardProvider({
   const handleSelectProcurement = (nextProcurementNo: string) => {
     setProcurementNo(nextProcurementNo);
     setJobOrderId(null);
+    setSourceDocument(null);
     setMetadata(EMPTY_METADATA);
     setOriginalItems([]);
     setItems([]);
@@ -260,6 +340,7 @@ export function JobOrderWizardProvider({
     setCommissionPercentInput(0);
     setCommissionValueInput(0);
     setCommissionZeroed(false);
+    setProfitSplitBasis(role === "staff" ? "commission" : "markup");
 
     // Line items come straight from the linked Price Schedule the moment it's selected — no
     // separate "parse" step needed for these, unlike the Source Document metadata below.
@@ -291,6 +372,40 @@ export function JobOrderWizardProvider({
       }
     })();
   };
+
+  // Uploads to S3 as soon as a file is dropped — real upload only for now, no OCR/parsing wired up
+  // yet, so Metadata below stays manually typed regardless of what's in this file.
+  const uploadSourceDocument = (file: File) => {
+    setSourceDocument({ fileName: file.name, fileType: file.type, s3Key: null, isUploading: true });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    fetch("/api/job-orders/source-document", { method: "POST", body: formData })
+      .then(async (res) => {
+        const result = await res.json();
+        if (!res.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to upload source document.");
+        }
+        setSourceDocument({
+          fileName: file.name,
+          fileType: file.type,
+          s3Key: result.data.s3Key,
+          uploadedAt: new Date().toISOString(),
+          isUploading: false,
+        });
+      })
+      .catch((err) => {
+        setSourceDocument({
+          fileName: file.name,
+          fileType: file.type,
+          s3Key: null,
+          isUploading: false,
+          uploadError: err instanceof Error ? err.message : "Failed to upload source document.",
+        });
+      });
+  };
+  const removeSourceDocument = () => setSourceDocument(null);
 
   // Placeholder for the real document-scan extraction of the Job Order's own Source Document
   // (still mock for now, per the user's request — that part comes once the real documents are
@@ -380,8 +495,8 @@ export function JobOrderWizardProvider({
       ),
     );
 
-  const originalTotal = sumSubTotals(originalItems);
-  const newTotal = sumSubTotals(items);
+  const originalTotal = sumSubTotals(originalItems, vatRate);
+  const newTotal = sumSubTotals(items, vatRate);
 
   const receiptsTotal = receipts.reduce((sum, receipt) => sum + receipt.amount, 0);
   const manualExpensesTotal = expensesZeroed
@@ -389,29 +504,68 @@ export function JobOrderWizardProvider({
     : otherExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const otherExpensesTotal = receiptsTotal + manualExpensesTotal;
 
-  const markupValue =
-    markupMode === "percentage" ? valueFromPercent(newTotal, markupPercentInput) : markupValueInput;
-  const markupPercent =
-    markupMode === "percentage" ? markupPercentInput : percentFromValue(newTotal, markupValueInput);
+  // What buying the goods (Step 2's receipts/expenses) actually left of the tender's own award
+  // value — Markup and Sales Commission are both entered as a value or a percentage of this, not
+  // of New Total, since this is the real money the job order has to work with before either.
+  const profitBase = originalTotal - otherExpensesTotal;
 
-  const commissionValue = commissionZeroed
-    ? 0
-    : commissionMode === "percentage"
-      ? valueFromPercent(newTotal, commissionPercentInput)
-      : commissionValueInput;
-  const commissionPercent = commissionZeroed
-    ? 0
-    : commissionMode === "percentage"
-      ? commissionPercentInput
-      : percentFromValue(newTotal, commissionValueInput);
+  // Each side's own value ⇄ percentage pair, resolved independently of the other — only one of
+  // these two ever actually feeds into the split below (whichever `profitSplitBasis` says is
+  // being driven right now); the other is recomputed from it as the complement.
+  const markupOwnValue =
+    markupMode === "percentage" ? valueFromPercent(profitBase, markupPercentInput) : markupValueInput;
+  const markupOwnPercent =
+    markupMode === "percentage" ? markupPercentInput : percentFromValue(profitBase, markupValueInput);
+  const commissionOwnValue =
+    commissionMode === "percentage" ? valueFromPercent(profitBase, commissionPercentInput) : commissionValueInput;
+  const commissionOwnPercent =
+    commissionMode === "percentage" ? commissionPercentInput : percentFromValue(profitBase, commissionValueInput);
 
-  const profit = markupValue - (commissionValue + otherExpensesTotal);
+  // Markup (the company's share) and Sales Commission (the sales agent's share) split 100% of the
+  // profit base — Admin can drive the split from either side; Staff can only ever drive it from
+  // Commission (Markup is locked read-only for them). commissionZeroed is a full override: no
+  // agent this time, so Markup is whatever was typed on its own, independent of any split.
+  let markupValue: number;
+  let markupPercent: number;
+  let commissionValue: number;
+  let commissionPercent: number;
+  if (commissionZeroed) {
+    commissionValue = 0;
+    commissionPercent = 0;
+    markupValue = markupOwnValue;
+    markupPercent = markupOwnPercent;
+  } else if (profitSplitBasis === "commission") {
+    commissionValue = commissionOwnValue;
+    commissionPercent = commissionOwnPercent;
+    markupValue = Math.max(0, profitBase - commissionValue);
+    markupPercent = percentFromValue(profitBase, markupValue);
+  } else {
+    markupValue = markupOwnValue;
+    markupPercent = markupOwnPercent;
+    commissionValue = Math.max(0, profitBase - markupValue);
+    commissionPercent = percentFromValue(profitBase, commissionValue);
+  }
+
+  // The bottom-line "Profit" figure is whichever half of the split this role actually cares about
+  // — Admin is tracking the company's own take (Markup), Staff is tracking their own commission
+  // earnings. The record's real, persisted profit (generate-bill, History) is always the Markup
+  // value regardless of who's looking — this is purely how Step 3 displays it live.
+  const profit = role === "admin" ? markupValue : commissionValue;
 
   const buildJobOrderPayload = (status: "Draft" | "Completed", completedStep: JobOrderCompletionStep) => ({
       procurementNo,
       procurementTitle,
       procuringEntity,
       assignedStaffId,
+      sourceDocument:
+        sourceDocument?.s3Key && sourceDocument.uploadedAt
+          ? {
+              fileName: sourceDocument.fileName,
+              fileType: sourceDocument.fileType,
+              s3Key: sourceDocument.s3Key,
+              uploadedAt: sourceDocument.uploadedAt,
+            }
+          : null,
       metadata,
       originalLineItems: originalItems.map(({ item, qty, unitPrice }) => ({ item, qty, unitPrice })),
       lineItems: items.map(({ item, qty, unitPrice }) => ({ item, qty, unitPrice })),
@@ -490,9 +644,16 @@ export function JobOrderWizardProvider({
     goToStep,
 
     procurementNo,
+    procuringEntity,
     procurementOptionsList,
     isLoadingProcurementOptions,
     handleSelectProcurement,
+
+    vatRate,
+
+    sourceDocument,
+    uploadSourceDocument,
+    removeSourceDocument,
 
     metadata,
     isParsing,
@@ -506,7 +667,8 @@ export function JobOrderWizardProvider({
 
     assignedStaffId,
     setAssignedStaffId,
-    staffOptionsList: staffOptions,
+    staffOptionsList,
+    isLoadingStaffOptions,
 
     receipts,
     addReceipts,
@@ -523,10 +685,12 @@ export function JobOrderWizardProvider({
     markupValue,
     markupPercent,
     setMarkupValue: (v) => {
+      setProfitSplitBasis("markup");
       setMarkupMode("value");
       setMarkupValueInput(v);
     },
     setMarkupPercent: (p) => {
+      setProfitSplitBasis("markup");
       setMarkupMode("percentage");
       setMarkupPercentInput(p);
     },
@@ -534,10 +698,12 @@ export function JobOrderWizardProvider({
     commissionValue,
     commissionPercent,
     setCommissionValue: (v) => {
+      setProfitSplitBasis("commission");
       setCommissionMode("value");
       setCommissionValueInput(v);
     },
     setCommissionPercent: (p) => {
+      setProfitSplitBasis("commission");
       setCommissionMode("percentage");
       setCommissionPercentInput(p);
     },
@@ -549,6 +715,7 @@ export function JobOrderWizardProvider({
     receiptsTotal,
     manualExpensesTotal,
     otherExpensesTotal,
+    profitBase,
     profit,
 
     canProceedFromStep1: Boolean(procurementNo) && items.length > 0,

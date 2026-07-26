@@ -7,11 +7,13 @@ import type { JobOrderLineItem } from "@/shared/types/job-order.types";
 
 interface JobOrderLineItemsTableProps {
   items: JobOrderLineItem[];
+  /** Real, from System Config — 0 unless Admin has VAT registration enabled. */
+  vatRate: number;
   onRemove: (id: string) => void;
 }
 
 /** Line items for the selected procurement — reuses the generic `DataTable` shell, adding a per-row Remove action. */
-export function JobOrderLineItemsTable({ items, onRemove }: JobOrderLineItemsTableProps) {
+export function JobOrderLineItemsTable({ items, vatRate, onRemove }: JobOrderLineItemsTableProps) {
   const { t } = useTranslation();
 
   return (
@@ -27,12 +29,12 @@ export function JobOrderLineItemsTable({ items, onRemove }: JobOrderLineItemsTab
         {
           id: "vat",
           header: t("lineItems.vat"),
-          cell: (row) => formatAmount(calculateLineItemTotals(row.qty, row.unitPrice).vat),
+          cell: (row) => formatAmount(calculateLineItemTotals(row.qty, row.unitPrice, vatRate).vat),
         },
         {
           id: "subTotal",
           header: t("lineItems.subTotal"),
-          cell: (row) => formatAmount(calculateLineItemTotals(row.qty, row.unitPrice).subTotal),
+          cell: (row) => formatAmount(calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal),
         },
         {
           id: "remove",

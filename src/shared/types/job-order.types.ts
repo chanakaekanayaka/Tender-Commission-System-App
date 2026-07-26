@@ -35,6 +35,19 @@ export interface ReceiptItem {
   uploadError?: string;
 }
 
+/** Step 1's own Source Document — real upload only for now (POST /api/job-orders/source-document);
+ *  no OCR/parsing wired up yet, so this never drives the Metadata fields (those stay manual). */
+export interface SourceDocumentState {
+  fileName: string;
+  fileType: string;
+  /** S3 key once the real upload finishes — `null` while uploading or if the upload failed. */
+  s3Key: string | null;
+  /** ISO timestamp captured client-side the moment the upload actually succeeds — set alongside s3Key. */
+  uploadedAt?: string;
+  isUploading: boolean;
+  uploadError?: string;
+}
+
 export interface StaffOption {
   id: string;
   name: string;
@@ -48,16 +61,25 @@ export interface ProcurementOption {
   procuringEntity: string;
 }
 
-/** Staff's Active Job Orders — tracks creation-wizard progress (Step 1/2/3), same axis as AdminActiveJobOrder. */
+/** Staff's Active Job Orders — same underlying record as AdminActiveJobOrder, viewed from Staff's
+ *  own role: Commission (their own profit share) instead of Admin's Profit, and no Action column. */
 export interface ActiveJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
-  completedStep: JobOrderCompletionStep;
+  procuringEntity: string;
+  total: number;
+  /** Staff's own profit share — `JobOrder.commissionValue`, live (not frozen until billing). */
+  commissionValue: number;
+  /** Whether the generated bill has been sent to Admin (`JobOrder.billSubmittedAt !== null`) —
+   *  drives the "Job Pending" → "Verification Pending" status badge, and whether Staff still sees
+   *  a "Send to Admin" button or is just waiting on Admin's Verify action. */
+  billSubmitted: boolean;
   /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
    *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
-   *  already 3, so Generate Bill/Receipt Upload gating checks this, not completedStep alone. */
+   *  already 3, so Generate Bill gating checks this, not completedStep alone. */
   status: "Draft" | "Completed";
+  createdAt: string;
   documentName?: string;
   /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
   documentUrl?: string;
@@ -76,21 +98,44 @@ export interface JobOrderHistoryRecord {
 /** How far a job order has progressed through the 3-step creation wizard (Step 1: Create Job Order, Step 2: Receipts Uploads, Step 3: Markup & Summary). Drives Admin's Active table status badge and gates "Generate Bill". */
 export type JobOrderCompletionStep = 1 | 2 | 3;
 
+/** A single Other Expenses row shown in Admin's review Details modal — combines both Step 2
+ *  receipts (label: the uploaded file's name) and manually-entered expense lines into one shape,
+ *  since Admin only needs to review the amounts, not which kind each one was. */
+export interface JobOrderExpenseBreakdownItem {
+  label: string;
+  amount: number;
+}
+
 /**
- * Admin's Active Job Orders row — same `completedStep` axis as Staff's own
- * `ActiveJobOrder`, since both track the one shared creation wizard, just
- * viewed from each role's own list. `documentName` is whatever bill document
- * Staff has attached, shown read-only via the same document cell.
+ * Admin's Active Job Orders row — same underlying record as Staff's own `ActiveJobOrder`, just
+ * viewed from Admin's role: Profit (the company's own share) instead of Staff's Commission, plus
+ * the Admin-only Action (Regenerate Bill, Verify) column and review Details modal.
  */
 export interface AdminActiveJobOrder {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
-  completedStep: JobOrderCompletionStep;
+  procuringEntity: string;
+  total: number;
+  /** Company's own profit share — `JobOrder.markupValue`, live (not frozen until billing). */
+  profit: number;
+  /** What the generated bill actually charges the procuring entity — `JobOrder.billAmount`, null
+   *  until a bill exists. Shown in the Details review modal alongside the expense breakdown. */
+  billAmount: number | null;
+  /** Receipts + manual expense entries Staff recorded in Step 2 — same figures that make up
+   *  `total`'s underlying profit base, surfaced here so Admin can review them before verifying. */
+  otherExpenses: JobOrderExpenseBreakdownItem[];
+  otherExpensesTotal: number;
+  /** Whether the generated bill has been sent to Admin (`JobOrder.billSubmittedAt !== null`) —
+   *  Admin generating/regenerating the bill themselves sets this immediately, so this only ever
+   *  reads `false` for a bill Staff generated but hasn't sent yet. Drives the "Job Pending" →
+   *  "Verification Pending" status badge, and whether the Verify action is available. */
+  billSubmitted: boolean;
   /** Only "Completed" once the wizard's own Create Job Order (validated, requires Markup > 0) has
    *  actually run — a Save Draft on Step 3 still leaves this "Draft" even though completedStep is
    *  already 3, so Generate Bill gating checks this, not completedStep alone. */
   status: "Draft" | "Completed";
+  createdAt: string;
   documentName?: string;
   /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
   documentUrl?: string;

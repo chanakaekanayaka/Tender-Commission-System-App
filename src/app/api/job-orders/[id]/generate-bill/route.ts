@@ -8,6 +8,7 @@ import {
   type JobOrderLineItemSubdoc,
   type JobOrderReceiptSubdoc,
 } from "@/lib/db/models/JobOrder.model";
+import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { requireAuth } from "@/lib/auth/guard";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getSignedImageUrl, uploadDocumentToS3 } from "@/lib/aws/s3";
@@ -28,6 +29,7 @@ interface BillData {
   procurementTitle: string;
   procuringEntity: string;
   lineItems: JobOrderLineItemSubdoc[];
+  vatRate: number;
   originalTotal: number;
   newTotal: number;
   markupValue: number;
@@ -96,7 +98,7 @@ async function buildJobOrderBillPDF(data: BillData): Promise<Buffer> {
 
   doc.font("Helvetica").fillColor("#111827");
   for (const row of data.lineItems) {
-    const { subTotal } = calculateLineItemTotals(row.qty, row.unitPrice);
+    const { subTotal } = calculateLineItemTotals(row.qty, row.unitPrice, data.vatRate);
     if (y > 720) {
       doc.addPage();
       y = 50;
@@ -162,8 +164,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return apiError("Complete Step 3 (Markup & Summary) before generating a bill.", 400);
     }
 
+    const systemConfig = await getOrCreateSystemConfig();
+    const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
+
     const sumSubTotals = (rows: JobOrderLineItemSubdoc[]) =>
-      rows.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice).subTotal, 0);
+      rows.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal, 0);
 
     const originalTotal = sumSubTotals(jobOrder.originalLineItems);
     const newTotal = sumSubTotals(jobOrder.lineItems);
@@ -175,7 +180,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       ? 0
       : jobOrder.otherExpenses.reduce((sum: number, expense: JobOrderExpenseSubdoc) => sum + expense.amount, 0);
     const otherExpensesTotal = receiptsTotal + manualExpensesTotal;
-    const profit = jobOrder.markupValue - (jobOrder.commissionValue + otherExpensesTotal);
+    // Same as the wizard's own Financial Summary: Sales Commission is always the complement of
+    // Markup within the profit base, so whatever isn't paid out as commission (Markup) is exactly
+    // what the company keeps.
+    const profit = jobOrder.markupValue;
 
     const buffer = await buildJobOrderBillPDF({
       jobOrderNo: jobOrder.jobOrderNo,
@@ -183,6 +191,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       procurementTitle: jobOrder.procurementTitle,
       procuringEntity: jobOrder.procuringEntity,
       lineItems: jobOrder.lineItems,
+      vatRate,
       originalTotal,
       newTotal,
       markupValue: jobOrder.markupValue,
@@ -200,13 +209,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     // Commission/other expenses are the company's own internal cost allocation, not billed onward.
     jobOrder.billAmount = newTotal + jobOrder.markupValue;
     jobOrder.profit = profit;
-    // Regenerating a bill (e.g. after fixing a mistake) resets payment verification — the old PDF
-    // this was verified against no longer exists, so re-verifying against the new one is required.
+    // Regenerating a bill (e.g. after fixing a mistake) resets both bill submission/verification
+    // and payment verification — the old PDF these were checked against no longer exists. Admin
+    // generating/regenerating it themselves needs no separate "send to Admin" step, so it's
+    // considered submitted immediately; Staff still has to explicitly submit via submit-bill.
+    jobOrder.billSubmittedAt = payload.role === "Admin" ? new Date() : null;
+    jobOrder.billVerifiedAt = null;
     jobOrder.paymentVerifiedAt = null;
     await jobOrder.save();
 
     const previewUrl = await getSignedImageUrl(s3Key);
-    return apiSuccess({ fileName, previewUrl }, "Bill generated successfully.");
+    return apiSuccess(
+      { fileName, previewUrl, billSubmitted: jobOrder.billSubmittedAt !== null },
+      "Bill generated successfully.",
+    );
   } catch (err) {
     console.error("POST /api/job-orders/[id]/generate-bill failed:", err);
     return apiError("Something went wrong while generating the bill.", 500);

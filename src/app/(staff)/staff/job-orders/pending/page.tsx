@@ -11,7 +11,7 @@ export default async function StaffPendingJobOrdersPage() {
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
   const records = await JobOrderModel.find({
-    billDocument: { $ne: null },
+    billVerifiedAt: { $ne: null },
     paymentVerifiedAt: null,
     ...(user ? { createdBy: user._id } : {}),
   }).sort({ "billDocument.generatedAt": -1 });

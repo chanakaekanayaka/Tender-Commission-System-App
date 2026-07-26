@@ -2,6 +2,7 @@ import { T } from "@/components/features/i18n/T";
 import { JobOrderHistoryTable } from "@/components/features/job-orders/JobOrderHistoryTable";
 import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel, type JobOrderLineItemSubdoc } from "@/lib/db/models/JobOrder.model";
+import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
@@ -9,9 +10,11 @@ export default async function AdminJobOrderHistoryPage() {
   await connectDB();
   // A job order is done for good once payment has been verified — that's the one signal that
   // moves it out of Pending and into History (see verify-payment route).
-  const records = await JobOrderModel.find({ paymentVerifiedAt: { $ne: null } }).sort({
-    paymentVerifiedAt: -1,
-  });
+  const [records, systemConfig] = await Promise.all([
+    JobOrderModel.find({ paymentVerifiedAt: { $ne: null } }).sort({ paymentVerifiedAt: -1 }),
+    getOrCreateSystemConfig(),
+  ]);
+  const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
 
   const data: JobOrderHistoryRecord[] = records.map((record) => ({
     id: record._id.toString(),
@@ -19,7 +22,8 @@ export default async function AdminJobOrderHistoryPage() {
     procurementNo: record.procurementNo,
     completionDate: record.paymentVerifiedAt!.toISOString().slice(0, 10),
     originalTotal: record.originalLineItems.reduce(
-      (sum: number, row: JobOrderLineItemSubdoc) => sum + calculateLineItemTotals(row.qty, row.unitPrice).subTotal,
+      (sum: number, row: JobOrderLineItemSubdoc) =>
+        sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
       0,
     ),
     finalValue: record.billAmount ?? 0,

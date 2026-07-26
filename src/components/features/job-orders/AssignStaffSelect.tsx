@@ -7,12 +7,29 @@ interface AssignStaffSelectProps {
   staffId: string;
   options: StaffOption[];
   onChange: (staffId: string) => void;
-  /** Staff role sees its own assignment as read-only, not an editable dropdown (AGENTS.md Job Order §4). */
+  /** Staff role sees its own assignment as a plain name, not a dropdown at all — there's nothing
+   *  for them to pick, it's always themselves (AGENTS.md Job Order §4). */
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
-export function AssignStaffSelect({ staffId, options, onChange, disabled = false }: AssignStaffSelectProps) {
+export function AssignStaffSelect({
+  staffId,
+  options,
+  onChange,
+  disabled = false,
+  isLoading = false,
+}: AssignStaffSelectProps) {
   const { t } = useTranslation();
+
+  if (disabled) {
+    const staffName = options.find((opt) => opt.id === staffId)?.name ?? "";
+    return (
+      <Card title={t("jobOrderCreate.assignToStaffHeading")}>
+        <p className="text-sm text-ink">{staffName}</p>
+      </Card>
+    );
+  }
 
   return (
     <Card title={t("jobOrderCreate.assignToStaffHeading")}>
@@ -21,8 +38,7 @@ export function AssignStaffSelect({ staffId, options, onChange, disabled = false
         value={staffId}
         options={options.map((opt) => ({ value: opt.id, label: opt.name }))}
         onChange={onChange}
-        placeholder={t("jobOrderCreate.selectStaff")}
-        disabled={disabled}
+        placeholder={isLoading ? t("jobOrderCreate.loadingStaff") : t("jobOrderCreate.selectStaff")}
       />
     </Card>
   );

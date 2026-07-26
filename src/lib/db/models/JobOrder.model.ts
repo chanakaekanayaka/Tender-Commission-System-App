@@ -32,6 +32,13 @@ export interface JobOrderPaymentProofSubdoc {
   uploadedAt: Date;
 }
 
+export interface JobOrderSourceDocumentSubdoc {
+  fileName: string;
+  fileType: string;
+  s3Key: string;
+  uploadedAt: Date;
+}
+
 export interface JobOrderMetadataSubdoc {
   address: string;
   telephone: string;
@@ -52,6 +59,9 @@ export interface JobOrderDocument extends Document {
    *  runs on mock staff ids (that wiring hasn't been done yet), so this can't be cast/validated as
    *  a real User reference until it is. Revisit once that dropdown is wired to real staff. */
   assignedStaffId: string;
+  /** Set by POST /api/job-orders/source-document — real upload only for now, no OCR parsing yet
+   *  (Metadata fields stay manually typed until Textract is wired up for this document). */
+  sourceDocument: JobOrderSourceDocumentSubdoc | null;
   metadata: JobOrderMetadataSubdoc;
   originalLineItems: JobOrderLineItemSubdoc[];
   lineItems: JobOrderLineItemSubdoc[];
@@ -66,6 +76,16 @@ export interface JobOrderDocument extends Document {
   /** Frozen alongside billAmount, same reasoning — markup minus commission and other expenses.
    *  Drives Job Order History's Profit column once the job order is paid and closed out. */
   profit: number | null;
+  /** Set by POST /api/job-orders/[id]/submit-bill — when Staff generates the bill, it stays null
+   *  until Staff explicitly sends it to Admin; when Admin generates/regenerates it themselves, the
+   *  generate-bill route sets this immediately (no self-to-self send needed). Drives the "Job
+   *  Pending" → "Verification Pending" status shown in Job Order Active. */
+  billSubmittedAt: Date | null;
+  /** Set by POST /api/job-orders/[id]/verify-bill — Admin approving the (already-submitted) bill.
+   *  This, not merely `billDocument` existing, is what actually moves a row out of Job Order Active
+   *  and into Job Order Pending for both roles. Reset to null on every regenerate, since the bill
+   *  this was verified against no longer exists. */
+  billVerifiedAt: Date | null;
   /** Set by PATCH /api/job-orders/[id]/verify-payment — null until Admin verifies payment came
    *  in. Drives Job Order Pending: a bill with a null value here is still awaiting payment. */
   paymentVerifiedAt: Date | null;
@@ -140,6 +160,16 @@ const paymentProofSchema = new Schema<JobOrderPaymentProofSubdoc>(
   { _id: false },
 );
 
+const sourceDocumentSchema = new Schema<JobOrderSourceDocumentSubdoc>(
+  {
+    fileName: { type: String, required: true },
+    fileType: { type: String, required: true },
+    s3Key: { type: String, required: true },
+    uploadedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const jobOrderSchema = new Schema<JobOrderDocument>(
   {
     jobOrderNo: { type: String, required: true, trim: true },
@@ -147,6 +177,7 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     procurementTitle: { type: String, required: true, trim: true },
     procuringEntity: { type: String, required: true, trim: true },
     assignedStaffId: { type: String, default: "" },
+    sourceDocument: { type: sourceDocumentSchema, default: null },
     metadata: { type: metadataSchema, required: true },
     originalLineItems: { type: [lineItemSchema], required: true },
     lineItems: { type: [lineItemSchema], required: true },
@@ -155,6 +186,8 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     billDocument: { type: billDocumentSchema, default: null },
     billAmount: { type: Number, default: null },
     profit: { type: Number, default: null },
+    billSubmittedAt: { type: Date, default: null },
+    billVerifiedAt: { type: Date, default: null },
     paymentVerifiedAt: { type: Date, default: null },
     paymentProof: { type: paymentProofSchema, default: null },
     expensesZeroed: { type: Boolean, default: false },

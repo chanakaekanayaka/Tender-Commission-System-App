@@ -25,11 +25,19 @@ const jobOrderMetadataSchema = z.object({
   note: z.string(),
 });
 
+const jobOrderSourceDocumentSchema = z.object({
+  fileName: z.string().trim().min(1),
+  fileType: z.string().min(1),
+  s3Key: z.string().min(1),
+  uploadedAt: z.string().min(1),
+});
+
 export const saveJobOrderSchema = z.object({
   procurementNo: z.string().trim().min(1, "Procurement No is required"),
   procurementTitle: z.string().trim().min(1, "Procurement title is required"),
   procuringEntity: z.string().trim().min(1, "Procuring entity is required"),
   assignedStaffId: z.string().trim().optional().default(""),
+  sourceDocument: jobOrderSourceDocumentSchema.nullable().optional(),
   metadata: jobOrderMetadataSchema,
   originalLineItems: z.array(jobOrderLineItemSchema),
   lineItems: z.array(jobOrderLineItemSchema),
