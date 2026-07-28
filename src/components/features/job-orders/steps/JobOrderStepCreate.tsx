@@ -17,6 +17,9 @@ export function JobOrderStepCreate() {
     procurementOptionsList,
     isLoadingProcurementOptions,
     handleSelectProcurement,
+    sourceDocument,
+    uploadSourceDocument,
+    removeSourceDocument,
     metadata,
     isParsing,
     handleParse,
@@ -24,9 +27,11 @@ export function JobOrderStepCreate() {
     items,
     isLoadingItems,
     handleRemoveItem,
+    vatRate,
     assignedStaffId,
     setAssignedStaffId,
     staffOptionsList,
+    isLoadingStaffOptions,
   } = useJobOrderWizard();
   const isAdmin = role === "admin";
 
@@ -44,12 +49,21 @@ export function JobOrderStepCreate() {
           options={staffOptionsList}
           onChange={setAssignedStaffId}
           disabled={!isAdmin}
+          isLoading={isLoadingStaffOptions}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
         <div className="space-y-2">
-          <JobOrderDocumentDropzone onParse={handleParse} isParsing={isParsing} />
+          <JobOrderDocumentDropzone
+            fileName={sourceDocument?.fileName}
+            isUploading={sourceDocument?.isUploading}
+            uploadError={sourceDocument?.uploadError}
+            onFileSelected={uploadSourceDocument}
+            onRemove={removeSourceDocument}
+            onParse={handleParse}
+            isParsing={isParsing}
+          />
           {!procurementNo && (
             <p className="text-xs text-muted">{t("jobOrderCreate.selectProcurementFirst")}</p>
           )}
@@ -61,6 +75,11 @@ export function JobOrderStepCreate() {
       <div>
         <p className="mb-3 text-xs font-semibold tracking-wide text-muted uppercase">
           {t("jobOrderCreate.lineItemsHeading")}
+          {!isLoadingItems && items.length > 0 && (
+            <span className="ml-1.5 normal-case text-muted">
+              ({t("jobOrderCreate.lineItemsCount", { count: String(items.length) })})
+            </span>
+          )}
         </p>
         {isLoadingItems ? (
           <div className="flex items-center justify-center gap-2 rounded-none border border-border bg-card p-6 text-sm text-muted">
@@ -68,7 +87,7 @@ export function JobOrderStepCreate() {
             {t("jobOrderCreate.loadingItems")}
           </div>
         ) : (
-          <JobOrderLineItemsTable items={items} onRemove={handleRemoveItem} />
+          <JobOrderLineItemsTable items={items} vatRate={vatRate} onRemove={handleRemoveItem} />
         )}
       </div>
     </>

@@ -3,6 +3,7 @@
 import { Plus } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { ZeroToggle } from "@/components/ui/ZeroToggle";
+import { JobOrderContextSummary } from "@/components/features/job-orders/JobOrderContextSummary";
 import { OtherExpensesSection } from "@/components/features/job-orders/OtherExpensesSection";
 import { ReceiptsList } from "@/components/features/job-orders/ReceiptsList";
 import { ReceiptsUploadArea } from "@/components/features/job-orders/ReceiptsUploadArea";
@@ -32,6 +33,8 @@ export function JobOrderStepReceipts() {
 
   return (
     <>
+      <JobOrderContextSummary />
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_3fr]">
         <ReceiptsUploadArea onFilesAdded={addReceipts} />
         <ReceiptsList receipts={receipts} onAmountChange={updateReceiptAmount} onRemove={removeReceipt} />

@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
+import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
 import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
 
 export default async function StaffPendingJobOrdersPage() {
@@ -11,7 +12,7 @@ export default async function StaffPendingJobOrdersPage() {
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
   const records = await JobOrderModel.find({
-    billDocument: { $ne: null },
+    billVerifiedAt: { $ne: null },
     paymentVerifiedAt: null,
     ...(user ? { createdBy: user._id } : {}),
   }).sort({ "billDocument.generatedAt": -1 });
@@ -21,11 +22,12 @@ export default async function StaffPendingJobOrdersPage() {
       id: record._id.toString(),
       jobOrderNo: record.jobOrderNo,
       procurementNo: record.procurementNo,
-      amount: record.billAmount ?? 0,
+      amount: getExpensesAmount(record),
       dateSubmitted: record.billDocument!.generatedAt.toISOString().slice(0, 10),
       paymentProofName: record.paymentProof?.fileName,
       paymentProofType: record.paymentProof?.fileType,
       paymentProofUrl: record.paymentProof ? await getSignedImageUrl(record.paymentProof.s3Key) : undefined,
+      paymentProofVerified: record.paymentProofVerifiedAt !== null,
     })),
   );
 

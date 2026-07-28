@@ -14,8 +14,9 @@ const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 /** Staff uploads evidence that the procuring entity actually paid (bank slip, cheque copy, etc.)
- *  once a bill is out for payment — Admin then has something real to check before clicking Verify
- *  Payment on the Pending table. Uploading again replaces whatever was there before. */
+ *  once a bill is out for payment — Admin then has something real to check before verifying the
+ *  proof and, later, marking the payment complete. Uploading again replaces whatever was there
+ *  before and resets paymentProofVerifiedAt, since the old proof it was checked against is gone. */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { payload, error } = requireAuth(request);
   if (error) return error;
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     await uploadDocumentToS3(buffer, s3Key, file.type);
 
     jobOrder.paymentProof = { fileName: file.name, fileType: file.type, s3Key, uploadedAt: new Date() };
+    // A fresh proof hasn't been checked yet — whatever Admin verified before was against the old one.
+    jobOrder.paymentProofVerifiedAt = null;
     await jobOrder.save();
 
     const previewUrl = await getSignedImageUrl(s3Key);

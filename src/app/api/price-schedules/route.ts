@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { ZodError } from "zod";
 import connectDB from "@/lib/db/connectDB";
 import { resolveItemCode } from "@/lib/db/items";
+import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { PriceScheduleModel } from "@/lib/db/models/PriceSchedule.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { requireAuth } from "@/lib/auth/guard";
@@ -83,6 +84,15 @@ export async function GET(request: NextRequest) {
     payload.role === "Admin" || status ? {} : { createdBy: payload.userId };
   if (status === "Draft" || status === "Completed") {
     filter.status = status;
+  }
+  // Job Order creation browses Completed tenders to link — one that already has a Job Order
+  // (procurementNo is unique on JobOrder, so "has one" and "has any status" are the same check)
+  // isn't available to pick again, whatever that Job Order's own Active/Pending/History state is.
+  if (status === "Completed") {
+    const alreadyLinked = await JobOrderModel.distinct("procurementNo");
+    if (alreadyLinked.length > 0) {
+      filter.procurementNo = { $nin: alreadyLinked };
+    }
   }
   const records = await PriceScheduleModel.find(filter).sort({ createdAt: -1 });
 

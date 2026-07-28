@@ -23,10 +23,13 @@ interface AdminPendingTableProps {
 
 /**
  * Admin's Pending Job Orders — every row here has a real generated bill (billDocument) that
- * hasn't been payment-verified yet (paymentVerifiedAt is null). "Verify Payment" is the one next
- * action; "Due Date" and the overdue "Due" badge are derived from the real System Config's
- * paymentDueDays. Company name/accent color on the printed letter stay the one still-mock piece
- * (System Config doesn't store those for real yet) — purely cosmetic, doesn't affect the numbers.
+ * hasn't had payment marked complete yet (paymentVerifiedAt is null). Two sequential actions live
+ * here: "Verify Bill" checks the Staff-uploaded payment proof looks legitimate (row stays put,
+ * badge flips to "Verified"), then "Payment Complete" — only enabled once verified — is what
+ * actually moves the row into History. "Due Date" and the overdue "Due" badge are derived from the
+ * real System Config's paymentDueDays. Company name/accent color on the printed letter stay the
+ * one still-mock piece (System Config doesn't store those for real yet) — purely cosmetic, doesn't
+ * affect the numbers.
  */
 export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingTableProps) {
   const { t } = useTranslation();
@@ -35,6 +38,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
   const [emailRowId, setEmailRowId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const today = useMemo(() => new Date(), []);
@@ -52,31 +56,51 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
     const q = query.trim().toLowerCase();
     if (!q) return true;
 
-    const haystack = [row.jobOrderNo, row.procurementNo, formatLKR(row.billAmount), row.billGeneratedDate]
+    const haystack = [row.jobOrderNo, row.procurementNo, formatLKR(row.expensesAmount), row.billGeneratedDate]
       .join(" ")
       .toLowerCase();
 
     return haystack.includes(q);
   });
 
-  // Once verified, the row leaves this list — it stays that way for good since the query behind
-  // this page filters on paymentVerifiedAt: null.
-  const handleVerifyPayment = async (id: string) => {
+  // Checks the proof, but the row stays right here in Pending — only Payment Complete moves it out.
+  const handleVerifyProof = async (id: string) => {
     setVerifyingId(id);
     try {
-      const res = await fetch(`/api/job-orders/${id}/verify-payment`, { method: "PATCH" });
+      const res = await fetch(`/api/job-orders/${id}/verify-payment-proof`, { method: "PATCH" });
       const result = await res.json();
       if (!res.ok || !result.success) {
-        throw new Error(result.message ?? "Failed to verify payment.");
+        throw new Error(result.message ?? "Failed to verify payment proof.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
+      setRows((prev) => prev.map((row) => (row.id === id ? { ...row, paymentProofVerified: true } : row)));
     } catch (err) {
       setToast({
-        message: err instanceof Error ? err.message : "Failed to verify payment.",
+        message: err instanceof Error ? err.message : "Failed to verify payment proof.",
         variant: "error",
       });
     } finally {
       setVerifyingId(null);
+    }
+  };
+
+  // The one action that actually leaves this list for good — the query behind this page filters
+  // on paymentVerifiedAt: null.
+  const handleCompletePayment = async (id: string) => {
+    setCompletingId(id);
+    try {
+      const res = await fetch(`/api/job-orders/${id}/complete-payment`, { method: "PATCH" });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to complete payment.");
+      }
+      setRows((prev) => prev.filter((row) => row.id !== id));
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to complete payment.",
+        variant: "error",
+      });
+    } finally {
+      setCompletingId(null);
     }
   };
 
@@ -117,9 +141,9 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
           { id: "jobOrderNo", header: t("activeJobOrders.jobOrderNo"), cell: (row) => row.jobOrderNo },
           { id: "procurementNo", header: t("common.procurementNo"), cell: (row) => row.procurementNo },
           {
-            id: "billAmount",
-            header: t("jobOrderPending.billAmount"),
-            cell: (row) => formatLKR(row.billAmount),
+            id: "expensesAmount",
+            header: t("jobOrderPending.expensesAmount"),
+            cell: (row) => formatLKR(row.expensesAmount),
           },
           {
             id: "billGeneratedDate",
@@ -135,10 +159,14 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
             id: "status",
             header: t("common.status"),
             cell: (row) =>
-              dueById.get(row.id)!.overdue ? (
+              row.paymentProofVerified ? (
+                <StatusBadge label={t("jobOrderPending.verified")} tone="green" />
+              ) : dueById.get(row.id)!.overdue ? (
                 <StatusBadge label={t("jobOrderPending.due")} tone="red" />
+              ) : row.paymentProofName ? (
+                <StatusBadge label={t("jobOrderPending.verificationPending")} tone="amber" />
               ) : (
-                <StatusBadge label={t("jobOrderPending.paymentPending")} tone="amber" />
+                <StatusBadge label={t("jobOrderPending.billUploadPending")} tone="blue" />
               ),
           },
           {
@@ -155,14 +183,28 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
               const overdue = dueById.get(row.id)!.overdue;
               return (
                 <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleVerifyPayment(row.id)}
-                    disabled={verifyingId === row.id}
-                    className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {verifyingId === row.id ? t("jobOrderPending.verifying") : t("jobOrderPending.verifyPayment")}
-                  </button>
+                  {row.paymentProofVerified ? (
+                    <button
+                      type="button"
+                      onClick={() => handleCompletePayment(row.id)}
+                      disabled={completingId === row.id}
+                      className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {completingId === row.id
+                        ? t("jobOrderPending.completingPayment")
+                        : t("jobOrderPending.completePayment")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleVerifyProof(row.id)}
+                      disabled={verifyingId === row.id || !row.paymentProofName}
+                      title={!row.paymentProofName ? t("jobOrderPending.proofRequired") : undefined}
+                      className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {verifyingId === row.id ? t("jobOrderPending.verifying") : t("jobOrderPending.verifyPayment")}
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={!overdue}

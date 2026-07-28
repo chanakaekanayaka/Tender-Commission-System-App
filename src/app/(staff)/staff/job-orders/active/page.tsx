@@ -1,26 +1,37 @@
 import { T } from "@/components/features/i18n/T";
 import { ActiveJobOrdersTable } from "@/components/features/job-orders/ActiveJobOrdersTable";
 import connectDB from "@/lib/db/connectDB";
-import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
+import { JobOrderModel, type JobOrderLineItemSubdoc } from "@/lib/db/models/JobOrder.model";
+import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
+import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import type { ActiveJobOrder } from "@/shared/types/job-order.types";
 
 export default async function StaffActiveJobOrdersPage() {
   const user = await getCurrentUser();
   await connectDB();
-  // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
-  const records = await JobOrderModel.find(user ? { createdBy: user._id } : {}).sort({ createdAt: -1 });
+  // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Only bill-verified rows leave for
+  // Job Order Pending — see verify-bill.
+  const [records, systemConfig] = await Promise.all([
+    JobOrderModel.find({ billVerifiedAt: null, ...(user ? { createdBy: user._id } : {}) }).sort({ createdAt: -1 }),
+    getOrCreateSystemConfig(),
+  ]);
+  const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
+  const sumSubTotals = (rows: JobOrderLineItemSubdoc[]) =>
+    rows.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal, 0);
 
-  // No "billed" state exists on the model yet, so every Job Order stays in Active — Generate Bill
-  // just attaches a document here, it doesn't move the row anywhere else (yet).
   const data: ActiveJobOrder[] = await Promise.all(
     records.map(async (record) => ({
       id: record._id.toString(),
       jobOrderNo: record.jobOrderNo,
       procurementNo: record.procurementNo,
-      completedStep: record.completedStep,
+      procuringEntity: record.procuringEntity,
+      total: sumSubTotals(record.lineItems),
+      commissionValue: record.commissionValue,
+      billSubmitted: record.billSubmittedAt !== null,
       status: record.status,
+      createdAt: record.createdAt.toISOString().slice(0, 10),
       documentName: record.billDocument?.fileName,
       documentUrl: record.billDocument ? await getSignedImageUrl(record.billDocument.s3Key) : undefined,
     })),

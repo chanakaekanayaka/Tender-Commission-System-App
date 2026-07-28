@@ -63,6 +63,18 @@ function JobOrderStepperContent() {
     });
   };
 
+  // "Next" always saves first — advancing without an explicit Save click shouldn't leave whatever
+  // was just filled in unsaved. Doesn't advance if the save itself failed, so the user isn't left
+  // thinking Step 2/3 has their data when the backend never actually got it.
+  const handleNext = async () => {
+    const result = await saveDraft();
+    if (!result.success) {
+      setToast({ message: result.message, variant: "error" });
+      return;
+    }
+    goNext();
+  };
+
   const handleSubmit = async () => {
     // Markup left at 0 is almost always a forgotten field, not an intentional "no markup" — unlike
     // Commission, there's no explicit "set to 0" opt-in for it, so a 0 here blocks completion
@@ -114,11 +126,11 @@ function JobOrderStepperContent() {
           {step < 3 ? (
             <button
               type="button"
-              onClick={goNext}
-              disabled={step === 1 && !canProceedFromStep1}
+              onClick={handleNext}
+              disabled={(step === 1 && !canProceedFromStep1) || isSavingDraft || isCompleting}
               className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {t("jobOrderCreate.nextStep", { label: steps[step].label })}
+              {isSavingDraft ? t("jobOrderCreate.savingDraft") : t("jobOrderCreate.nextStep", { label: steps[step].label })}
             </button>
           ) : (
             <button
