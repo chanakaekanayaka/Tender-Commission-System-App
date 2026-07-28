@@ -10,6 +10,7 @@ import {
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
+import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
 import type { AdminActiveJobOrder } from "@/shared/types/job-order.types";
 
 export default async function AdminActiveJobOrdersPage() {
@@ -27,8 +28,17 @@ export default async function AdminActiveJobOrdersPage() {
     records.map(async (record) => {
       // Receipts always count; manual entries only when Staff hasn't zeroed them out — same rule
       // generate-bill uses to compute otherExpensesTotal, so this matches the actual billed figure.
+      // Only receipts carry a real uploaded file, so only they get a signed URL to preview.
+      const receiptExpenses = await Promise.all(
+        record.receipts.map(async (receipt: JobOrderReceiptSubdoc) => ({
+          label: receipt.fileName,
+          amount: receipt.amount,
+          fileUrl: await getSignedImageUrl(receipt.s3Key),
+          fileType: receipt.fileType,
+        })),
+      );
       const otherExpenses = [
-        ...record.receipts.map((receipt: JobOrderReceiptSubdoc) => ({ label: receipt.fileName, amount: receipt.amount })),
+        ...receiptExpenses,
         ...(record.expensesZeroed
           ? []
           : record.otherExpenses.map((expense: JobOrderExpenseSubdoc) => ({
@@ -36,7 +46,7 @@ export default async function AdminActiveJobOrdersPage() {
               amount: expense.amount,
             }))),
       ];
-      const otherExpensesTotal = otherExpenses.reduce((sum, item) => sum + item.amount, 0);
+      const otherExpensesTotal = getExpensesAmount(record);
 
       return {
         id: record._id.toString(),

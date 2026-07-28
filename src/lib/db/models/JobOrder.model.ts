@@ -86,12 +86,18 @@ export interface JobOrderDocument extends Document {
    *  and into Job Order Pending for both roles. Reset to null on every regenerate, since the bill
    *  this was verified against no longer exists. */
   billVerifiedAt: Date | null;
-  /** Set by PATCH /api/job-orders/[id]/verify-payment — null until Admin verifies payment came
-   *  in. Drives Job Order Pending: a bill with a null value here is still awaiting payment. */
+  /** Set by PATCH /api/job-orders/[id]/verify-payment-proof — Admin confirming the Staff-uploaded
+   *  payment proof looks legitimate. The row stays in Job Order Pending either way (shown as
+   *  "Verified" once set) — this is a checkpoint, not the final gate. Reset to null whenever a new
+   *  proof is uploaded, since the old proof this was checked against is gone. */
+  paymentProofVerifiedAt: Date | null;
+  /** Set by PATCH /api/job-orders/[id]/complete-payment — Admin confirming the FULL payment has
+   *  actually been received (only reachable once paymentProofVerifiedAt is set). This, not merely
+   *  the proof being verified, is what moves a row out of Job Order Pending and into History. */
   paymentVerifiedAt: Date | null;
   /** Set by POST /api/job-orders/[id]/payment-proof — Staff uploads evidence (bank slip, cheque
    *  copy, etc.) once the procuring entity actually pays, so Admin has something to check before
-   *  clicking Verify Payment. Null until uploaded; uploading again replaces it. */
+   *  verifying it. Null until uploaded; uploading again replaces it. */
   paymentProof: JobOrderPaymentProofSubdoc | null;
   expensesZeroed: boolean;
   markupValue: number;
@@ -188,6 +194,7 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     profit: { type: Number, default: null },
     billSubmittedAt: { type: Date, default: null },
     billVerifiedAt: { type: Date, default: null },
+    paymentProofVerifiedAt: { type: Date, default: null },
     paymentVerifiedAt: { type: Date, default: null },
     paymentProof: { type: paymentProofSchema, default: null },
     expensesZeroed: { type: Boolean, default: false },

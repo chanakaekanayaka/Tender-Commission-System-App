@@ -9,8 +9,9 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
-import type { AdminActiveJobOrder } from "@/shared/types/job-order.types";
+import type { AdminActiveJobOrder, JobOrderExpenseBreakdownItem } from "@/shared/types/job-order.types";
 import { formatLKR } from "@/lib/utils/currency";
+import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 
 interface AdminActiveTableProps {
   initialData: AdminActiveJobOrder[];
@@ -31,6 +32,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [expensePreview, setExpensePreview] = useState<JobOrderExpenseBreakdownItem | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -190,15 +192,6 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
                       {verifyingId === row.id ? t("activeJobOrders.verifying") : t("activeJobOrders.verify")}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateBill(row.id)}
-                    disabled={generatingId === row.id}
-                    className="inline-flex items-center gap-1.5 rounded-none border border-border bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-active/5 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {generatingId === row.id && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-                    {generatingId === row.id ? t("activeJobOrders.generatingBill") : t("activeJobOrders.regenerateBill")}
-                  </button>
                   {!row.billSubmitted && (
                     <span className="text-xs text-muted">{t("activeJobOrders.awaitingSubmission")}</span>
                   )}
@@ -263,7 +256,20 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
                     <tbody>
                       {detailsRow.otherExpenses.map((expense, index) => (
                         <tr key={index} className="border-b border-border last:border-b-0">
-                          <td className="py-2 pr-3 text-ink">{expense.label}</td>
+                          <td className="py-2 pr-3 text-ink">
+                            {expense.fileUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => setExpensePreview(expense)}
+                                className="inline-flex items-center gap-1.5 font-medium text-ink underline decoration-border underline-offset-2 hover:text-active"
+                              >
+                                <FileText className="h-3.5 w-3.5" aria-hidden />
+                                {expense.label}
+                              </button>
+                            ) : (
+                              expense.label
+                            )}
+                          </td>
                           <td className="py-2 pl-3 text-right text-ink">{formatLKR(Math.round(expense.amount))}</td>
                         </tr>
                       ))}
@@ -281,6 +287,14 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
           </div>
         )}
       </Modal>
+
+      <DocumentPreviewModal
+        open={expensePreview !== null}
+        onClose={() => setExpensePreview(null)}
+        fileName={expensePreview?.label}
+        fileType={expensePreview?.fileType}
+        url={expensePreview?.fileUrl}
+      />
 
       {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>

@@ -7,10 +7,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
-import { formatDateISO } from "@/lib/utils/dueDate";
 import { formatLKR } from "@/lib/utils/currency";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
-import { openPendingPaymentSummary } from "@/lib/utils/printPendingSummary";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import { PaymentProofUploadCell } from "@/components/features/job-orders/PaymentProofUploadCell";
 import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
@@ -38,20 +35,6 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
 
   const previewRow = rows.find((row) => row.id === previewId) ?? null;
 
-  const handlePrintSummary = (row: StaffPendingJobOrder) => {
-    openPendingPaymentSummary({
-      companyName: defaultSystemConfig.companyName,
-      title: t("staffPendingJobOrders.printSummaryTitle"),
-      printedAtLabel: `${t("staffPendingJobOrders.printedAt")}: ${formatDateISO(new Date())}`,
-      rows: [
-        { label: t("activeJobOrders.jobOrderNo"), value: row.jobOrderNo },
-        { label: t("common.procurementNo"), value: row.procurementNo },
-        { label: t("staffPendingJobOrders.amount"), value: formatLKR(row.amount) },
-        { label: t("staffPendingJobOrders.dateSubmitted"), value: row.dateSubmitted },
-      ],
-    });
-  };
-
   return (
     <div className="space-y-4">
       <StatCard label={t("staffPendingJobOrders.totalPending")} value={formatLKR(totalPending)} />
@@ -72,7 +55,14 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
             {
               id: "status",
               header: t("common.status"),
-              cell: () => <StatusBadge label={t("staffPendingJobOrders.paymentPending")} tone="amber" />,
+              cell: (row) =>
+                row.paymentProofVerified ? (
+                  <StatusBadge label={t("staffPendingJobOrders.verified")} tone="green" />
+                ) : row.paymentProofName ? (
+                  <StatusBadge label={t("staffPendingJobOrders.verificationPending")} tone="amber" />
+                ) : (
+                  <StatusBadge label={t("staffPendingJobOrders.billUploadPending")} tone="blue" />
+                ),
             },
             { id: "amount", header: t("staffPendingJobOrders.amount"), cell: (row) => formatLKR(row.amount) },
             {
@@ -100,19 +90,6 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
                   }}
                   onError={(message) => setToast({ message, variant: "error" })}
                 />
-              ),
-            },
-            {
-              id: "actions",
-              header: t("common.actions"),
-              cell: (row) => (
-                <button
-                  type="button"
-                  onClick={() => handlePrintSummary(row)}
-                  className="rounded-none border border-border bg-card px-3 py-1.5 text-xs font-medium text-ink hover:bg-active/5"
-                >
-                  {t("staffPendingJobOrders.printSummary")}
-                </button>
               ),
             },
           ]}

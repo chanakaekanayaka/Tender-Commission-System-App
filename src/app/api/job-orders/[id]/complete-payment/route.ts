@@ -8,9 +8,10 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-/** Marks a Job Order's bill as paid — Admin-only, since Staff's Pending view is read-only
- *  monitoring of a bill Admin is chasing payment for. Once set, the record naturally drops out of
- *  the Pending query (GET /api/job-orders?view=pending filters on paymentVerifiedAt: null). */
+/** Admin confirming the FULL payment has actually been received — only reachable once the payment
+ *  proof has already been verified (see verify-payment-proof). This, not merely the proof being
+ *  verified, is what moves a row out of Job Order Pending and into History: it sets
+ *  paymentVerifiedAt, the same field both pages' queries have always filtered on. */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { error } = requireRole(request, "Admin");
   if (error) return error;
@@ -24,15 +25,18 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return apiError("Job Order not found.", 404);
     }
     if (!jobOrder.billDocument) {
-      return apiError("Generate a bill before verifying payment.", 400);
+      return apiError("Generate a bill before completing payment.", 400);
+    }
+    if (!jobOrder.paymentProofVerifiedAt) {
+      return apiError("Verify the payment proof before completing payment.", 400);
     }
 
     jobOrder.paymentVerifiedAt = new Date();
     await jobOrder.save();
 
-    return apiSuccess(jobOrder.toJSON(), "Payment verified successfully.");
+    return apiSuccess(jobOrder.toJSON(), "Payment marked complete.");
   } catch (err) {
-    console.error("PATCH /api/job-orders/[id]/verify-payment failed:", err);
-    return apiError("Something went wrong while verifying payment.", 500);
+    console.error("PATCH /api/job-orders/[id]/complete-payment failed:", err);
+    return apiError("Something went wrong while completing payment.", 500);
   }
 }

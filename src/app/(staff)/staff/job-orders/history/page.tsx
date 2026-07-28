@@ -5,6 +5,7 @@ import { JobOrderModel, type JobOrderLineItemSubdoc } from "@/lib/db/models/JobO
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
+import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
 export default async function StaffJobOrderHistoryPage() {
@@ -31,8 +32,10 @@ export default async function StaffJobOrderHistoryPage() {
         sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
       0,
     ),
-    finalValue: record.billAmount ?? 0,
-    profit: record.profit ?? 0,
+    // Same "what actually went to Staff" figure Active/Pending use — not the entity's bill amount.
+    finalValue: getExpensesAmount(record),
+    // Staff sees their own profit share (commission), not the company's.
+    profit: record.commissionValue,
   }));
 
   return (

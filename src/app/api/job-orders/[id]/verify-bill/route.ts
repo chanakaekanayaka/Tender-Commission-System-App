@@ -10,8 +10,9 @@ interface RouteContext {
 
 /** Admin approving a submitted bill — this, not merely `billDocument` existing, is what moves a
  *  Job Order out of Job Order Active and into Job Order Pending for both roles (see the Active/
- *  Pending page queries, which filter on billVerifiedAt). Distinct from verify-payment, which
- *  confirms the procuring entity actually paid once the row is already in Pending. */
+ *  Pending page queries, which filter on billVerifiedAt). Distinct from verify-payment-proof and
+ *  complete-payment, which handle the procuring entity's actual payment once the row is already
+ *  in Pending. */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { error } = requireRole(request, "Admin");
   if (error) return error;

@@ -4,6 +4,7 @@ import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
+import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
 import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 
 export default async function AdminPendingJobOrdersPage() {
@@ -22,12 +23,14 @@ export default async function AdminPendingJobOrdersPage() {
       procurementNo: record.procurementNo,
       procuringEntity: record.procuringEntity,
       billAmount: record.billAmount ?? 0,
+      expensesAmount: getExpensesAmount(record),
       billGeneratedDate: record.billDocument!.generatedAt.toISOString().slice(0, 10),
       entityAddress: record.metadata.address,
       entityEmail: record.metadata.email,
       paymentProofName: record.paymentProof?.fileName,
       paymentProofType: record.paymentProof?.fileType,
       paymentProofUrl: record.paymentProof ? await getSignedImageUrl(record.paymentProof.s3Key) : undefined,
+      paymentProofVerified: record.paymentProofVerifiedAt !== null,
     })),
   );
 

@@ -4,12 +4,13 @@ import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel, type JobOrderLineItemSubdoc } from "@/lib/db/models/JobOrder.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
+import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
 export default async function AdminJobOrderHistoryPage() {
   await connectDB();
-  // A job order is done for good once payment has been verified — that's the one signal that
-  // moves it out of Pending and into History (see verify-payment route).
+  // A job order is done for good once payment has been marked fully complete — that's the one
+  // signal that moves it out of Pending and into History (see complete-payment route).
   const [records, systemConfig] = await Promise.all([
     JobOrderModel.find({ paymentVerifiedAt: { $ne: null } }).sort({ paymentVerifiedAt: -1 }),
     getOrCreateSystemConfig(),
@@ -26,7 +27,9 @@ export default async function AdminJobOrderHistoryPage() {
         sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
       0,
     ),
-    finalValue: record.billAmount ?? 0,
+    // Same "what actually went to Staff" figure Active/Pending use — not the entity's bill amount.
+    finalValue: getExpensesAmount(record),
+    // Admin sees the company's own profit share (frozen at bill generation).
     profit: record.profit ?? 0,
   }));
 
