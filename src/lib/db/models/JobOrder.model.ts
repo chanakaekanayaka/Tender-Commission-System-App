@@ -95,6 +95,15 @@ export interface JobOrderDocument extends Document {
    *  actually been received (only reachable once paymentProofVerifiedAt is set). This, not merely
    *  the proof being verified, is what moves a row out of Job Order Pending and into History. */
   paymentVerifiedAt: Date | null;
+  /** Set by PATCH /api/job-orders/[id]/pay-commission — Admin paying Staff their commission for
+   *  this job order. Deliberately independent of `paymentVerifiedAt`: Staff can be paid their
+   *  commission before the procuring entity has paid the company. Drives Commissions
+   *  Pending/History for both roles. */
+  commissionPaidAt: Date | null;
+  /** Set by PATCH /api/job-orders/[id]/reject-commission — Admin declining to pay out this job
+   *  order's commission (e.g. a dispute). Removes it from Commissions Pending without adding it to
+   *  History, since nothing was actually paid. */
+  commissionRejectedAt: Date | null;
   /** Set by POST /api/job-orders/[id]/payment-proof — Staff uploads evidence (bank slip, cheque
    *  copy, etc.) once the procuring entity actually pays, so Admin has something to check before
    *  verifying it. Null until uploaded; uploading again replaces it. */
@@ -196,6 +205,8 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     billVerifiedAt: { type: Date, default: null },
     paymentProofVerifiedAt: { type: Date, default: null },
     paymentVerifiedAt: { type: Date, default: null },
+    commissionPaidAt: { type: Date, default: null },
+    commissionRejectedAt: { type: Date, default: null },
     paymentProof: { type: paymentProofSchema, default: null },
     expensesZeroed: { type: Boolean, default: false },
     markupValue: { type: Number, required: true, min: 0 },

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidEmail, isValidPhone } from "./contactValidation";
 
 const jobOrderLineItemSchema = z.object({
   item: z.string().trim().min(1, "Item description is required"),
@@ -20,8 +21,8 @@ const jobOrderExpenseSchema = z.object({
 
 const jobOrderMetadataSchema = z.object({
   address: z.string(),
-  telephone: z.string(),
-  email: z.string(),
+  telephone: z.string().refine(isValidPhone, "Enter a valid telephone number"),
+  email: z.string().refine(isValidEmail, "Enter a valid email address"),
   note: z.string(),
 });
 

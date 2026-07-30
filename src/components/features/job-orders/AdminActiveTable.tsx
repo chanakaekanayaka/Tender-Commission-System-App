@@ -186,7 +186,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
                       type="button"
                       onClick={() => handleVerify(row.id)}
                       disabled={verifyingId === row.id}
-                      className="inline-flex items-center gap-1.5 rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 rounded-none bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {verifyingId === row.id && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
                       {verifyingId === row.id ? t("activeJobOrders.verifying") : t("activeJobOrders.verify")}
@@ -238,9 +238,9 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
         {detailsRow && (
           <div className="space-y-4">
             <div className="rounded-none border border-border bg-surface p-3">
-              <p className="text-xs text-muted">{t("activeJobOrders.billAmount")}</p>
+              <p className="text-xs text-muted">{t("activeJobOrders.expensesAmount")}</p>
               <p className="mt-1 text-sm font-semibold text-ink">
-                {detailsRow.billAmount !== null ? formatLKR(Math.round(detailsRow.billAmount)) : "—"}
+                {formatLKR(Math.round(detailsRow.otherExpensesTotal))}
               </p>
             </div>
 

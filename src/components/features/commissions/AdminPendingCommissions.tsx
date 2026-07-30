@@ -4,36 +4,59 @@ import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import type { AdminPendingCommission } from "@/shared/types/commission.types";
 
 interface AdminPendingCommissionsProps {
   data: AdminPendingCommission[];
-  onApprove?: (row: AdminPendingCommission) => void;
-  onReject?: (row: AdminPendingCommission) => void;
 }
 
 /**
- * Admin's Pending Commissions — one row per staff commission awaiting a payout
- * decision. Approve/Reject just remove the row locally (dummy data, no backend
- * yet); the optional callbacks let a future data layer hook in without changing
- * this component. Client-only because of the Approve/Reject + search state,
- * same split as JobOrderHistoryTable.
+ * Admin's Pending Commissions — one row per Job Order whose commission is awaiting a payout
+ * decision. Approve pays Staff their commission (PATCH pay-commission) and Reject declines it
+ * (PATCH reject-commission) — both real, independent of whether the procuring entity has paid the
+ * company yet. Client-only because of the Approve/Reject + search state, same split as
+ * JobOrderHistoryTable.
  */
-export function AdminPendingCommissions({ data, onApprove, onReject }: AdminPendingCommissionsProps) {
+export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(data);
   const [query, setQuery] = useState("");
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
-  const handleApprove = (row: AdminPendingCommission) => {
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
-    onApprove?.(row);
+  const handleApprove = async (row: AdminPendingCommission) => {
+    setProcessingId(row.id);
+    try {
+      const res = await fetch(`/api/job-orders/${row.id}/pay-commission`, { method: "PATCH" });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to pay commission.");
+      }
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to pay commission.", variant: "error" });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
-  const handleReject = (row: AdminPendingCommission) => {
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
-    onReject?.(row);
+  const handleReject = async (row: AdminPendingCommission) => {
+    setProcessingId(row.id);
+    try {
+      const res = await fetch(`/api/job-orders/${row.id}/reject-commission`, { method: "PATCH" });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to reject commission.");
+      }
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to reject commission.", variant: "error" });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const filtered = rows.filter((row) => {
@@ -61,7 +84,7 @@ export function AdminPendingCommissions({ data, onApprove, onReject }: AdminPend
           {
             id: "calculatedCommission",
             header: t("commissions.calculatedCommission"),
-            cell: (row) => formatLKR((row.profit * row.commissionRate) / 100),
+            cell: (row) => formatLKR(row.calculatedCommission),
           },
           {
             id: "status",
@@ -76,14 +99,16 @@ export function AdminPendingCommissions({ data, onApprove, onReject }: AdminPend
                 <button
                   type="button"
                   onClick={() => handleApprove(row)}
-                  className="text-xs font-medium text-ink underline"
+                  disabled={processingId === row.id}
+                  className="text-xs font-medium text-green-700 underline hover:text-green-800 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
                 >
                   {t("commissions.approve")}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleReject(row)}
-                  className="text-xs font-medium text-red-600 underline"
+                  disabled={processingId === row.id}
+                  className="text-xs font-medium text-red-600 underline hover:text-red-700 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
                 >
                   {t("commissions.reject")}
                 </button>
@@ -95,6 +120,8 @@ export function AdminPendingCommissions({ data, onApprove, onReject }: AdminPend
         rowKey={(row) => row.id}
         emptyMessage={t("commissions.noPending")}
       />
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { Card } from "@/components/ui/Card";
 import { FormField } from "@/components/ui/FormField";
 import { useTranslation } from "@/context/LanguageContext";
+import { isValidEmail, isValidPhone } from "@/lib/validation/contactValidation";
 import type { JobOrderMetadata } from "@/shared/types/job-order.types";
 
 interface JobOrderMetadataFormProps {
@@ -30,11 +31,13 @@ export function JobOrderMetadataForm({ metadata, onChange }: JobOrderMetadataFor
           label={t("jobOrderCreate.telephone")}
           value={metadata.telephone}
           onChange={(value) => onChange("telephone", value)}
+          error={isValidPhone(metadata.telephone) ? undefined : t("jobOrderCreate.invalidTelephone")}
         />
         <FormField
           label={t("jobOrderCreate.email")}
           value={metadata.email}
           onChange={(value) => onChange("email", value)}
+          error={isValidEmail(metadata.email) ? undefined : t("jobOrderCreate.invalidEmail")}
         />
         <FormField
           label={t("jobOrderCreate.note")}

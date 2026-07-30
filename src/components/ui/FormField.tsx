@@ -12,6 +12,8 @@ interface FormFieldProps {
   min?: number;
   max?: number;
   step?: number;
+  /** Validation message — shown below the input, which also switches to a red border. */
+  error?: string;
 }
 
 /** Reusable labeled input — editable counterpart to the read-only metadata `Field` used in tender forms. */
@@ -26,6 +28,7 @@ export function FormField({
   min,
   max,
   step,
+  error,
 }: FormFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
@@ -43,9 +46,10 @@ export function FormField({
           max={max}
           step={step}
           onChange={(e) => onChange?.(e.target.value)}
-          className={`block w-full rounded-none border border-border bg-surface px-3 py-2 text-ink focus:border-active focus:outline-none ${
-            suffix || isPassword ? "pr-10" : ""
-          } ${disabled ? "cursor-not-allowed bg-card text-muted" : ""}`}
+          aria-invalid={error ? true : undefined}
+          className={`block w-full rounded-none border bg-surface px-3 py-2 text-ink focus:outline-none ${
+            error ? "border-red-600 focus:border-red-600" : "border-border focus:border-active"
+          } ${suffix || isPassword ? "pr-10" : ""} ${disabled ? "cursor-not-allowed bg-card text-muted" : ""}`}
         />
         {isPassword ? (
           <button
@@ -64,6 +68,7 @@ export function FormField({
           )
         )}
       </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </label>
   );
 }

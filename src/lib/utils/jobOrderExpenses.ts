@@ -1,4 +1,5 @@
 import type { JobOrderDocument } from "@/lib/db/models/JobOrder.model";
+import { calculateLineItemTotals } from "@/lib/utils/pricing";
 
 /**
  * Step 2 receipts + manual Other Expenses total — what actually went to/was spent by Staff on the
@@ -13,4 +14,18 @@ export function getExpensesAmount(record: JobOrderDocument): number {
     ? 0
     : record.otherExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   return receiptsTotal + manualExpensesTotal;
+}
+
+/**
+ * "Overall Profit" — New Total minus Other Expenses, the same base Step 3's Financial Summary
+ * splits between Company Profit and Sales Commission (see JobOrderWizardContext's `profitBase`).
+ * Can be negative (a loss). Recomputed server-side wherever a real figure is needed outside the
+ * wizard itself, e.g. Commissions Pending/History.
+ */
+export function getProfitBase(record: JobOrderDocument, vatRate: number): number {
+  const newTotal = record.lineItems.reduce(
+    (sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
+    0,
+  );
+  return newTotal - getExpensesAmount(record);
 }

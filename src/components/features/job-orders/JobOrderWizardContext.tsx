@@ -88,10 +88,10 @@ interface JobOrderWizardValue {
   receiptsTotal: number;
   manualExpensesTotal: number;
   otherExpensesTotal: number;
-  /** Original Total minus Other Expenses — the base Markup/Sales Commission are entered as a
-   *  value or percentage of, and the starting point for the final `profit` figure. */
+  /** New Total minus Other Expenses — "Overall Profit". The base Company Profit/Sales Commission
+   *  are entered as a value or percentage of; negative means the job order is at a loss, shown
+   *  directly (colored red/green) as the Financial Summary's bottom-line figure. */
   profitBase: number;
-  profit: number;
 
   canProceedFromStep1: boolean;
 
@@ -504,10 +504,11 @@ export function JobOrderWizardProvider({
     : otherExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const otherExpensesTotal = receiptsTotal + manualExpensesTotal;
 
-  // What buying the goods (Step 2's receipts/expenses) actually left of the tender's own award
-  // value — Markup and Sales Commission are both entered as a value or a percentage of this, not
-  // of New Total, since this is the real money the job order has to work with before either.
-  const profitBase = originalTotal - otherExpensesTotal;
+  // Overall Profit — what New Total actually leaves once Step 2's receipts/expenses are paid for.
+  // Company Profit and Sales Commission are both entered as a value or a percentage of this, and
+  // it can go negative (a loss): the job order cost more in expenses than the current line items
+  // are worth. Financial Summary shows this figure directly, colored red/green by its sign.
+  const profitBase = newTotal - otherExpensesTotal;
 
   // Each side's own value ⇄ percentage pair, resolved independently of the other — only one of
   // these two ever actually feeds into the split below (whichever `profitSplitBasis` says is
@@ -521,10 +522,13 @@ export function JobOrderWizardProvider({
   const commissionOwnPercent =
     commissionMode === "percentage" ? commissionPercentInput : percentFromValue(profitBase, commissionValueInput);
 
-  // Markup (the company's share) and Sales Commission (the sales agent's share) split 100% of the
-  // profit base — Admin can drive the split from either side; Staff can only ever drive it from
-  // Commission (Markup is locked read-only for them). commissionZeroed is a full override: no
-  // agent this time, so Markup is whatever was typed on its own, independent of any split.
+  // Company Profit (the company's share) and Sales Commission (the sales agent's share) split
+  // Overall Profit — Admin can drive the split from either side; Staff can only ever drive it from
+  // Commission (Company Profit is locked read-only for them, and disabled outright once Overall
+  // Profit is negative — there's no commission to pay out of a loss). commissionZeroed is a full
+  // override: no agent this time, so Company Profit is whatever was typed on its own, independent
+  // of any split. Deliberately not clamped to 0 — a loss has to stay visible as a negative number,
+  // not silently disappear.
   let markupValue: number;
   let markupPercent: number;
   let commissionValue: number;
@@ -534,23 +538,23 @@ export function JobOrderWizardProvider({
     commissionPercent = 0;
     markupValue = markupOwnValue;
     markupPercent = markupOwnPercent;
+  } else if (profitBase < 0) {
+    // A loss — no commission to pay out, so it all falls to Company Profit (i.e. the whole loss).
+    commissionValue = 0;
+    commissionPercent = 0;
+    markupValue = profitBase;
+    markupPercent = percentFromValue(profitBase, markupValue);
   } else if (profitSplitBasis === "commission") {
     commissionValue = commissionOwnValue;
     commissionPercent = commissionOwnPercent;
-    markupValue = Math.max(0, profitBase - commissionValue);
+    markupValue = profitBase - commissionValue;
     markupPercent = percentFromValue(profitBase, markupValue);
   } else {
     markupValue = markupOwnValue;
     markupPercent = markupOwnPercent;
-    commissionValue = Math.max(0, profitBase - markupValue);
+    commissionValue = profitBase - markupValue;
     commissionPercent = percentFromValue(profitBase, commissionValue);
   }
-
-  // The bottom-line "Profit" figure is whichever half of the split this role actually cares about
-  // — Admin is tracking the company's own take (Markup), Staff is tracking their own commission
-  // earnings. The record's real, persisted profit (generate-bill, History) is always the Markup
-  // value regardless of who's looking — this is purely how Step 3 displays it live.
-  const profit = role === "admin" ? markupValue : commissionValue;
 
   const buildJobOrderPayload = (status: "Draft" | "Completed", completedStep: JobOrderCompletionStep) => ({
       procurementNo,
@@ -716,7 +720,6 @@ export function JobOrderWizardProvider({
     manualExpensesTotal,
     otherExpensesTotal,
     profitBase,
-    profit,
 
     canProceedFromStep1: Boolean(procurementNo) && items.length > 0,
 

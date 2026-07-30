@@ -83,7 +83,7 @@ export function AdminInvoiceModule() {
                   type="button"
                   onClick={() => verifyInvoice(row.id)}
                   disabled={row.verified}
-                  className="text-xs font-medium text-ink underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+                  className="text-xs font-medium text-green-700 underline hover:text-green-800 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
                 >
                   {row.verified ? t("invoices.verified") : t("invoices.verify")}
                 </button>

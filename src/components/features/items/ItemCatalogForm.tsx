@@ -358,7 +358,7 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
                       type="button"
                       onClick={() => handleRemoveSpec(spec.id)}
                       aria-label={t("common.delete")}
-                      className="text-muted hover:text-ink"
+                      className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="h-3.5 w-3.5" aria-hidden />
                     </button>
