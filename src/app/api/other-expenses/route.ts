@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       receipt: input.receipt ?? null,
       status: "Pending",
       reviewedAt: null,
+      invoiceId: null,
       createdBy: payload.userId,
     });
 

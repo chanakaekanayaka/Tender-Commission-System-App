@@ -4,18 +4,19 @@ import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { InvoiceDetailModal } from "@/components/features/invoices/InvoiceDetailModal";
-import { useInvoiceStore } from "@/context/InvoiceStoreContext";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
+import type { InvoiceRequest } from "@/shared/types/invoice.types";
 
-/** All Paid invoices across every Staff member — reads the same shared InvoiceStore Admin's Upload action writes to. */
-export function AdminInvoiceHistoryTable() {
+interface AdminInvoiceHistoryTableProps {
+  data: InvoiceRequest[];
+}
+
+/** Every Paid invoice across every Staff member, real data. */
+export function AdminInvoiceHistoryTable({ data }: AdminInvoiceHistoryTableProps) {
   const { t } = useTranslation();
-  const { invoices } = useInvoiceStore();
   const [viewingId, setViewingId] = useState<string | null>(null);
-
-  const paidInvoices = invoices.filter((invoice) => invoice.status === "Paid");
-  const viewingInvoice = paidInvoices.find((invoice) => invoice.id === viewingId) ?? null;
+  const viewingInvoice = data.find((invoice) => invoice.id === viewingId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
@@ -43,7 +44,7 @@ export function AdminInvoiceHistoryTable() {
             ),
           },
         ]}
-        data={paidInvoices}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("invoices.noHistory")}
       />

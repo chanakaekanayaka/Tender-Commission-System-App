@@ -8,7 +8,9 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-/** Admin approving a Staff-submitted expense — moves it from Pending into History for both roles. */
+/** Admin approving a Staff-submitted expense — moves it from Pending into History for both roles.
+ *  Only reachable for expenses not already bundled into an invoice (see POST /api/invoices), which
+ *  get resolved together when that invoice is paid instead. */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { error } = requireRole(request, "Admin");
   if (error) return error;
@@ -23,6 +25,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     }
     if (expense.status !== "Pending") {
       return apiError("This expense has already been reviewed.", 400);
+    }
+    if (expense.invoiceId) {
+      return apiError("This expense is bundled into an invoice — resolve it there instead.", 400);
     }
 
     expense.status = "Approved";

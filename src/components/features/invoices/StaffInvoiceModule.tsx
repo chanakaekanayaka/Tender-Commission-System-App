@@ -1,34 +1,38 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
+import { Toast, type ToastState } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
-import { useInvoiceStore } from "@/context/InvoiceStoreContext";
 import { useTranslation } from "@/context/LanguageContext";
-import { staffOptions } from "@/lib/mock/jobOrders.mock";
 import { formatLKR } from "@/lib/utils/currency";
 import type { PendingCommission } from "@/shared/types/commission.types";
-import type { InvoiceLineItem, InvoiceRequest } from "@/shared/types/invoice.types";
-import type { OtherExpenseRecord } from "@/shared/types/other-expense.types";
+import type { StaffExpensePendingRecord } from "@/shared/types/other-expense.types";
 
-// Stand-in for the signed-in Staff user — no auth/session yet (AGENTS.md UI-only mock phase),
-// same convention JobOrderWizardContext already uses for "this staff member".
-const CURRENT_STAFF_NAME = staffOptions[0].name;
-
-interface StaffInvoiceModuleProps {
-  initialCommissions: PendingCommission[];
-  initialExpenses: OtherExpenseRecord[];
+interface InvoicePreviewRow {
+  id: string;
+  label: string;
+  amount: number;
 }
 
-export function StaffInvoiceModule({ initialCommissions, initialExpenses }: StaffInvoiceModuleProps) {
+interface StaffInvoiceModuleProps {
+  commissions: PendingCommission[];
+  expenses: StaffExpensePendingRecord[];
+}
+
+/** Staff bundling their own pending commissions and/or pending other-expenses into one invoice —
+ *  real POST /api/invoices on Generate. Both lists are exactly what Job Order Commissions Pending
+ *  and Other Expenses Pending already show (minus anything already bundled into another invoice —
+ *  see invoiceId), so nothing here can be selected twice across two different invoices. */
+export function StaffInvoiceModule({ commissions, expenses }: StaffInvoiceModuleProps) {
   const { t } = useTranslation();
-  const { invoices, submitInvoice } = useInvoiceStore();
-  const [commissions, setCommissions] = useState(initialCommissions);
-  const [expenses, setExpenses] = useState(initialExpenses.filter((expense) => expense.status === "Pending"));
+  const router = useRouter();
   const [selectedCommissionIds, setSelectedCommissionIds] = useState<string[]>([]);
   const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
-  const [lastSubmittedNo, setLastSubmittedNo] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
 
   const toggleCommission = (id: string, checked: boolean) =>
     setSelectedCommissionIds((prev) => (checked ? [...prev, id] : prev.filter((cid) => cid !== id)));
@@ -36,51 +40,40 @@ export function StaffInvoiceModule({ initialCommissions, initialExpenses }: Staf
   const toggleExpense = (id: string, checked: boolean) =>
     setSelectedExpenseIds((prev) => (checked ? [...prev, id] : prev.filter((eid) => eid !== id)));
 
-  const selectedItems: InvoiceLineItem[] = useMemo(() => {
-    const commissionItems: InvoiceLineItem[] = commissions
+  const selectedItems: InvoicePreviewRow[] = useMemo(() => {
+    const commissionItems: InvoicePreviewRow[] = commissions
       .filter((c) => selectedCommissionIds.includes(c.id))
-      .map((c) => ({
-        id: c.id,
-        type: "commission",
-        label: t("invoices.commissionLabel", { jobOrderNo: c.jobOrderNo }),
-        amount: c.amount,
-      }));
+      .map((c) => ({ id: c.id, label: t("invoices.commissionLabel", { jobOrderNo: c.jobOrderNo }), amount: c.amount }));
 
-    const expenseItems: InvoiceLineItem[] = expenses
+    const expenseItems: InvoicePreviewRow[] = expenses
       .filter((e) => selectedExpenseIds.includes(e.id))
-      .map((e) => ({ id: e.id, type: "expense", label: e.description, amount: e.amount }));
+      .map((e) => ({ id: e.id, label: e.description, amount: e.amount }));
 
     return [...commissionItems, ...expenseItems];
   }, [commissions, expenses, selectedCommissionIds, selectedExpenseIds, t]);
 
   const total = selectedItems.reduce((sum, item) => sum + item.amount, 0);
-  const canGenerate = selectedItems.length > 0;
+  const canGenerate = selectedItems.length > 0 && !isGenerating;
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!canGenerate) return;
-
-    const invoiceNo = `INV-${new Date().getFullYear()}-${String(invoices.length + 100).padStart(4, "0")}`;
-    const invoice: InvoiceRequest = {
-      id: crypto.randomUUID(),
-      invoiceNo,
-      submittedBy: CURRENT_STAFF_NAME,
-      submittedDate: new Date().toISOString().slice(0, 10),
-      items: selectedItems,
-      total,
-      status: "Pending Review",
-      verified: false,
-    };
-
-    // TODO: POST /api/invoices once that route exists — UI-only mock phase (AGENTS.md).
-    submitInvoice(invoice);
-
-    // Mock-only: the selected commissions/expenses leave this staff member's
-    // pending pools now that they're bundled into a submitted invoice.
-    setCommissions((prev) => prev.filter((c) => !selectedCommissionIds.includes(c.id)));
-    setExpenses((prev) => prev.filter((e) => !selectedExpenseIds.includes(e.id)));
-    setSelectedCommissionIds([]);
-    setSelectedExpenseIds([]);
-    setLastSubmittedNo(invoiceNo);
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commissionJobOrderIds: selectedCommissionIds, expenseIds: selectedExpenseIds }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to generate invoice.");
+      }
+      router.push("/staff/invoices/history");
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : "Failed to generate invoice.", variant: "error" });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -147,18 +140,17 @@ export function StaffInvoiceModule({ initialCommissions, initialExpenses }: Staf
       </Card>
 
       <div className="flex flex-wrap items-center justify-end gap-3">
-        {lastSubmittedNo && (
-          <span className="text-xs text-muted">{t("invoices.submitted", { invoiceNo: lastSubmittedNo })}</span>
-        )}
         <button
           type="button"
           onClick={handleGenerate}
           disabled={!canGenerate}
           className="rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {t("invoices.generateButton")}
+          {isGenerating ? t("invoices.generating") : t("invoices.generateButton")}
         </button>
       </div>
+
+      {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>
   );
 }

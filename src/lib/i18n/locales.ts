@@ -386,7 +386,7 @@ export const en = {
   "invoices.summaryHeading": "Invoice Summary",
   "invoices.noItemsSelected": "Select at least one commission or expense to include.",
   "invoices.generateButton": "Generate Invoice →",
-  "invoices.submitted": "Submitted {invoiceNo} for Admin review.",
+  "invoices.generating": "Generating…",
   "invoices.commissionLabel": "Commission — {jobOrderNo}",
 
   // Invoices — shared labels (Staff History, Admin Requests/History, detail modal)
@@ -400,8 +400,6 @@ export const en = {
   "invoices.total": "Total",
   "invoices.pendingReview": "Pending Review",
   "invoices.paid": "Paid",
-  "invoices.verify": "Verify",
-  "invoices.verified": "Verified",
   "invoices.uploadPaymentBill": "Upload Bill",
   "invoices.paymentBill": "Payment Bill",
   "invoices.noRequests": "No invoice requests awaiting review.",
@@ -849,7 +847,7 @@ export const si: Record<TranslationKey, string> = {
   "invoices.summaryHeading": "ඉන්වොයිස් සාරාංශය",
   "invoices.noItemsSelected": "ඇතුළත් කිරීමට අවම වශයෙන් එක් කොමිසමක් හෝ වියදමක් තෝරන්න.",
   "invoices.generateButton": "ඉන්වොයිසය සාදන්න →",
-  "invoices.submitted": "{invoiceNo} පරිපාලක සමාලෝචනය සඳහා යවන ලදී.",
+  "invoices.generating": "සාදමින්…",
   "invoices.commissionLabel": "කොමිස් — {jobOrderNo}",
 
   // Invoices — shared labels (Staff History, Admin Requests/History, detail modal)
@@ -863,8 +861,6 @@ export const si: Record<TranslationKey, string> = {
   "invoices.total": "එකතුව",
   "invoices.pendingReview": "සමාලෝචනය පොරොත්තුවෙන්",
   "invoices.paid": "ගෙවා ඇත",
-  "invoices.verify": "සත්‍යාපනය කරන්න",
-  "invoices.verified": "සත්‍යාපිතයි",
   "invoices.uploadPaymentBill": "බිල්පත උඩුගත කරන්න",
   "invoices.paymentBill": "ගෙවීම් බිල්පත",
   "invoices.noRequests": "සමාලෝචනය පොරොත්තුවෙන් ඉන්වොයිස් ඉල්ලීම් නැත.",

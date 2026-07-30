@@ -4,22 +4,20 @@ import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { InvoiceDetailModal } from "@/components/features/invoices/InvoiceDetailModal";
-import { useInvoiceStore } from "@/context/InvoiceStoreContext";
 import { useTranslation } from "@/context/LanguageContext";
-import { staffOptions } from "@/lib/mock/jobOrders.mock";
 import { formatLKR } from "@/lib/utils/currency";
+import type { InvoiceRequest } from "@/shared/types/invoice.types";
 
-// Same "current Staff user" stand-in used across the Staff portal (no auth/session yet).
-const CURRENT_STAFF_NAME = staffOptions[0].name;
+interface StaffInvoiceHistoryTableProps {
+  data: InvoiceRequest[];
+}
 
-/** Staff's own invoice history, filtered from the shared InvoiceStore — Admin's Verify/Upload actions on the (admin) side show up here immediately since both portals read the same store. */
-export function StaffInvoiceHistoryTable() {
+/** Staff's own invoices (both Pending Review and already-Paid), real data — Admin's Upload action
+ *  on the (admin) side shows up here immediately since both read the same Invoice records. */
+export function StaffInvoiceHistoryTable({ data }: StaffInvoiceHistoryTableProps) {
   const { t } = useTranslation();
-  const { invoices } = useInvoiceStore();
   const [viewingId, setViewingId] = useState<string | null>(null);
-
-  const myInvoices = invoices.filter((invoice) => invoice.submittedBy === CURRENT_STAFF_NAME);
-  const viewingInvoice = myInvoices.find((invoice) => invoice.id === viewingId) ?? null;
+  const viewingInvoice = data.find((invoice) => invoice.id === viewingId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
@@ -52,7 +50,7 @@ export function StaffInvoiceHistoryTable() {
             ),
           },
         ]}
-        data={myInvoices}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("invoices.noHistory")}
       />

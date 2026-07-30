@@ -1,5 +1,6 @@
 "use client";
 
+import { FileText } from "lucide-react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
 import { useTranslation } from "@/context/LanguageContext";
@@ -49,9 +50,22 @@ export function InvoiceDetailModal({ invoice, onClose }: InvoiceDetailModalProps
           </p>
 
           {invoice.paymentBillFileName && (
-            <p className="text-xs text-muted">
-              {t("invoices.paymentBill")}: {invoice.paymentBillFileName}
-            </p>
+            <div>
+              <p className="mb-1 text-xs text-muted">{t("invoices.paymentBill")}</p>
+              {invoice.paymentBillUrl ? (
+                <a
+                  href={invoice.paymentBillUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-sm text-ink underline decoration-border underline-offset-2 hover:text-active"
+                >
+                  <FileText className="h-4 w-4 text-muted" aria-hidden />
+                  {invoice.paymentBillFileName}
+                </a>
+              ) : (
+                <p className="text-sm text-ink">{invoice.paymentBillFileName}</p>
+              )}
+            </div>
           )}
         </div>
       )}

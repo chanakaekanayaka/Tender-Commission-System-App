@@ -9,9 +9,11 @@ import type { StaffExpensePendingRecord } from "@/shared/types/other-expense.typ
 export default async function StaffExpensePendingPage() {
   const user = await getCurrentUser();
   await connectDB();
-  // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
+  // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Bundled-into-an-invoice ones are
+  // excluded — see invoiceId (they're resolved together when that invoice is paid instead).
   const records = await OtherExpenseModel.find({
     status: "Pending",
+    invoiceId: null,
     ...(user ? { createdBy: user._id } : {}),
   }).sort({ createdAt: -1 });
 

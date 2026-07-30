@@ -16,6 +16,7 @@ export default async function CommissionPendingPage() {
     billVerifiedAt: { $ne: null },
     commissionPaidAt: null,
     commissionRejectedAt: null,
+    invoiceId: null,
     ...(user ? { createdBy: user._id } : {}),
   }).sort({ billVerifiedAt: -1 });
 

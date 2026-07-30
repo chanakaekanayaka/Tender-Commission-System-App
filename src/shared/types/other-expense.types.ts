@@ -15,7 +15,8 @@ export interface OtherExpenseRecord {
  *  Invoices feature. */
 export type ExpenseReviewStatus = "Pending" | "Approved" | "Rejected";
 
-/** Staff's own Pending Expenses row — their submission awaiting Admin's decision. */
+/** Staff's own Pending Expenses row — their submission awaiting Admin's decision, or already
+ *  bundled into an invoice awaiting that invoice's own resolution. */
 export interface StaffExpensePendingRecord {
   id: string;
   description: string;
@@ -40,7 +41,8 @@ export interface StaffExpenseHistoryRecord {
   reviewedDate: string;
 }
 
-/** Admin's Pending Expenses row — every Staff-submitted expense awaiting Approve/Reject. */
+/** Admin's Pending Expenses row — every Staff-submitted expense awaiting Approve/Reject (that
+ *  hasn't already been bundled into an invoice). */
 export interface AdminExpensePendingRecord {
   id: string;
   staffName: string;

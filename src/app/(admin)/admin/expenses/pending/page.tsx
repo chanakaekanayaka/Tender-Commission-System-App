@@ -8,7 +8,7 @@ import type { AdminExpensePendingRecord } from "@/shared/types/other-expense.typ
 
 export default async function AdminExpensePendingPage() {
   await connectDB();
-  const records = await OtherExpenseModel.find({ status: "Pending" }).sort({ createdAt: -1 });
+  const records = await OtherExpenseModel.find({ status: "Pending", invoiceId: null }).sort({ createdAt: -1 });
 
   const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
   const staffUsers = await UserModel.find({ _id: { $in: staffIds } });

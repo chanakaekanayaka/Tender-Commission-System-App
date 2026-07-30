@@ -26,6 +26,9 @@ export interface OtherExpenseDocument extends Document {
   status: OtherExpenseStatus;
   /** Set by PATCH .../approve or .../reject — null while still Pending. */
   reviewedAt: Date | null;
+  /** Set by POST /api/invoices when Staff bundles this expense into an invoice — removes it from
+   *  Expenses Pending until that invoice is resolved, so it can never be double-invoiced. */
+  invoiceId: Types.ObjectId | null;
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +51,7 @@ const otherExpenseSchema = new Schema<OtherExpenseDocument>(
     receipt: { type: receiptSchema, default: null },
     status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
     reviewedAt: { type: Date, default: null },
+    invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice", default: null },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true },
