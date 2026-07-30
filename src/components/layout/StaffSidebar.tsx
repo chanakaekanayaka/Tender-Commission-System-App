@@ -44,6 +44,7 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     labelKey: "sidebar.otherExpenses",
     children: [
       { labelKey: "sidebar.create", href: "/staff/expenses/create" },
+      { labelKey: "sidebar.pending", href: "/staff/expenses/pending" },
       { labelKey: "sidebar.history", href: "/staff/expenses/history" },
     ],
   },

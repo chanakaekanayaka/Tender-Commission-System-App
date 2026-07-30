@@ -8,24 +8,19 @@ import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
-import type { AdminExpenseHistoryRecord } from "@/shared/types/other-expense.types";
+import type { StaffExpenseHistoryRecord } from "@/shared/types/other-expense.types";
 
-interface AdminExpenseHistoryProps {
-  data: AdminExpenseHistoryRecord[];
+interface StaffExpenseHistoryTableProps {
+  data: StaffExpenseHistoryRecord[];
 }
 
-/** Admin's Other Expenses history — every Staff-submitted expense already reviewed (Approved or
- *  Rejected), searchable by staff name or description. */
-export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
+/** Staff's own already-reviewed expenses (Approved or Rejected). */
+export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  const filtered = data.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.staffName, row.description].join(" ").toLowerCase().includes(q);
-  });
+  const filtered = data.filter((row) => row.description.toLowerCase().includes(query.trim().toLowerCase()));
   const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
@@ -36,7 +31,6 @@ export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
 
       <DataTable
         columns={[
-          { id: "staffName", header: t("otherExpenses.staffName"), cell: (row) => row.staffName },
           { id: "description", header: t("otherExpenses.description"), cell: (row) => row.description },
           { id: "date", header: t("otherExpenses.date"), cell: (row) => row.date },
           { id: "amount", header: t("otherExpenses.amount"), cell: (row) => formatLKR(row.amount) },
