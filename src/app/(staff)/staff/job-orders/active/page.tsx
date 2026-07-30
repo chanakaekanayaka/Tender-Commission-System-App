@@ -11,10 +11,13 @@ import type { ActiveJobOrder } from "@/shared/types/job-order.types";
 export default async function StaffActiveJobOrdersPage() {
   const user = await getCurrentUser();
   await connectDB();
-  // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Only bill-verified rows leave for
-  // Job Order Pending — see verify-bill.
+  // Staff sees their own records plus any Admin created and assigned to them
+  // (AI_INSTRUCTIONS.md §3). Only bill-verified rows leave for Job Order Pending — see verify-bill.
   const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billVerifiedAt: null, ...(user ? { createdBy: user._id } : {}) }).sort({ createdAt: -1 }),
+    JobOrderModel.find({
+      billVerifiedAt: null,
+      ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
+    }).sort({ createdAt: -1 }),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -34,6 +37,7 @@ export default async function StaffActiveJobOrdersPage() {
       createdAt: record.createdAt.toISOString().slice(0, 10),
       documentName: record.billDocument?.fileName,
       documentUrl: record.billDocument ? await getSignedImageUrl(record.billDocument.s3Key) : undefined,
+      isAdminAssigned: Boolean(user) && record.createdBy.toString() !== user!._id.toString(),
     })),
   );
 

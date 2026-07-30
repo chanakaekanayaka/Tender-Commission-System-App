@@ -122,6 +122,11 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
                   >
                     {row.jobOrderNo}
                   </Link>
+                  {row.isAdminAssigned && (
+                    <span className="mt-1 block w-fit rounded-none border border-border bg-surface px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted uppercase">
+                      {t("activeJobOrders.adminAssignment")}
+                    </span>
+                  )}
                 </td>
                 <td className="max-w-[240px] px-3 py-2 text-ink break-words sm:max-w-[320px]">
                   {row.procurementNo} — {row.procuringEntity}

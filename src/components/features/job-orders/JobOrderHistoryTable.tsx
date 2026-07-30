@@ -46,7 +46,20 @@ export function JobOrderHistoryTable({ data }: JobOrderHistoryTableProps) {
 
       <DataTable
         columns={[
-          { id: "jobOrderNo", header: t("activeJobOrders.jobOrderNo"), cell: (row) => row.jobOrderNo },
+          {
+            id: "jobOrderNo",
+            header: t("activeJobOrders.jobOrderNo"),
+            cell: (row) => (
+              <div>
+                <span>{row.jobOrderNo}</span>
+                {row.isAdminAssigned && (
+                  <span className="mt-1 block w-fit rounded-none border border-border bg-surface px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted uppercase">
+                    {t("activeJobOrders.adminAssignment")}
+                  </span>
+                )}
+              </div>
+            ),
+          },
           { id: "procurementNo", header: t("common.procurementNo"), cell: (row) => row.procurementNo },
           {
             id: "completionDate",
