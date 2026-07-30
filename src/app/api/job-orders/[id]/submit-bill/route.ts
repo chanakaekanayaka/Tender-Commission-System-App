@@ -11,7 +11,7 @@ interface RouteContext {
 /** Staff sending a generated bill to Admin for review — the explicit hand-off that flips Job Order
  *  Active's status from "Job Pending" to "Verification Pending". Admin generating/regenerating a
  *  bill themselves skips this (generate-bill sets billSubmittedAt directly), so this route is only
- *  reachable for Staff's own records. */
+ *  reachable for Staff's own records — either created by them or assigned to them by Admin. */
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const { payload, error } = requireAuth(request);
   if (error) return error;
@@ -19,7 +19,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
     await connectDB();
-    const filter = payload.role === "Admin" ? { _id: id } : { _id: id, createdBy: payload.userId };
+    const filter =
+      payload.role === "Admin"
+        ? { _id: id }
+        : { _id: id, $or: [{ createdBy: payload.userId }, { assignedStaffId: payload.userId }] };
 
     const jobOrder = await JobOrderModel.findOne(filter);
     if (!jobOrder) {

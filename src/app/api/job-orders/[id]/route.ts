@@ -12,8 +12,9 @@ interface RouteContext {
 }
 
 /** Fetches a single Job Order — used to resume the wizard on an in-progress record (clicking a
- *  row's Job Order No or Receipt Upload in the Active table). Staff can only fetch their own
- *  (AI_INSTRUCTIONS.md §3); Admin can fetch any. */
+ *  row's Job Order No or Receipt Upload in the Active table). Staff can fetch a job order they
+ *  either created themselves or that Admin created and assigned to them (AI_INSTRUCTIONS.md §3);
+ *  Admin can fetch any. */
 export async function GET(request: NextRequest, { params }: RouteContext) {
   const { payload, error } = requireAuth(request);
   if (error) return error;
@@ -21,7 +22,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
     await connectDB();
-    const filter = payload.role === "Admin" ? { _id: id } : { _id: id, createdBy: payload.userId };
+    const filter =
+      payload.role === "Admin"
+        ? { _id: id }
+        : { _id: id, $or: [{ createdBy: payload.userId }, { assignedStaffId: payload.userId }] };
 
     const jobOrder = await JobOrderModel.findOne(filter);
     if (!jobOrder) {
@@ -59,8 +63,12 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const input = saveJobOrderSchema.parse(body);
 
     await connectDB();
-    // Staff can only update their own drafts (AI_INSTRUCTIONS.md §3); Admin can update any.
-    const filter = payload.role === "Admin" ? { _id: id } : { _id: id, createdBy: payload.userId };
+    // Staff can update a draft they either created themselves or that Admin assigned to them
+    // (AI_INSTRUCTIONS.md §3); Admin can update any.
+    const filter =
+      payload.role === "Admin"
+        ? { _id: id }
+        : { _id: id, $or: [{ createdBy: payload.userId }, { assignedStaffId: payload.userId }] };
 
     const jobOrder = await JobOrderModel.findOneAndUpdate(filter, input, { new: true, runValidators: true });
     if (!jobOrder) {

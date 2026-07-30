@@ -211,6 +211,7 @@ export const en = {
   "activeJobOrders.details": "Details",
   "activeJobOrders.reviewHeading": "Bill & Other Expenses",
   "activeJobOrders.expensesAmount": "Expenses Amount",
+  "activeJobOrders.adminAssignment": "Admin Assignment",
   "activeJobOrders.otherExpensesHeading": "Other Expenses",
   "activeJobOrders.noOtherExpenses": "No other expenses recorded.",
 
@@ -671,6 +672,7 @@ export const si: Record<TranslationKey, string> = {
   "activeJobOrders.details": "විස්තර",
   "activeJobOrders.reviewHeading": "බිල්පත සහ අනෙකුත් වියදම්",
   "activeJobOrders.expensesAmount": "වියදම් මුදල",
+  "activeJobOrders.adminAssignment": "පරිපාලක පැවරීම",
   "activeJobOrders.otherExpensesHeading": "අනෙකුත් වියදම්",
   "activeJobOrders.noOtherExpenses": "අනෙකුත් වියදම් සටහන් වී නොමැත.",
   "activeJobOrders.generatingBill": "සාදමින්…",

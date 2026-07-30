@@ -11,12 +11,13 @@ import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 export default async function StaffJobOrderHistoryPage() {
   const user = await getCurrentUser();
   await connectDB();
-  // Staff sees only their own records — AI_INSTRUCTIONS.md §3. A job order is done for good once
-  // payment has been verified — that's the one signal that moves it out of Pending and into History.
+  // Staff sees their own records plus any Admin created and assigned to them
+  // (AI_INSTRUCTIONS.md §3). A job order is done for good once payment has been verified — that's
+  // the one signal that moves it out of Pending and into History.
   const [records, systemConfig] = await Promise.all([
     JobOrderModel.find({
       paymentVerifiedAt: { $ne: null },
-      ...(user ? { createdBy: user._id } : {}),
+      ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
     }).sort({ paymentVerifiedAt: -1 }),
     getOrCreateSystemConfig(),
   ]);
@@ -36,6 +37,7 @@ export default async function StaffJobOrderHistoryPage() {
     finalValue: getExpensesAmount(record),
     // Staff sees their own profit share (commission), not the company's.
     profit: record.commissionValue,
+    isAdminAssigned: Boolean(user) && record.createdBy.toString() !== user!._id.toString(),
   }));
 
   return (

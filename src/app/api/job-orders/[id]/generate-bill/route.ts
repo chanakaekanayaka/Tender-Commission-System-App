@@ -154,7 +154,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
     await connectDB();
-    const filter = payload.role === "Admin" ? { _id: id } : { _id: id, createdBy: payload.userId };
+    const filter =
+      payload.role === "Admin"
+        ? { _id: id }
+        : { _id: id, $or: [{ createdBy: payload.userId }, { assignedStaffId: payload.userId }] };
 
     const jobOrder = await JobOrderModel.findOne(filter);
     if (!jobOrder) {

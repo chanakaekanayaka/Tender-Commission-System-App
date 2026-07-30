@@ -10,11 +10,12 @@ import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
 export default async function StaffPendingJobOrdersPage() {
   const user = await getCurrentUser();
   await connectDB();
-  // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
+  // Staff sees their own records plus any Admin created and assigned to them
+  // (AI_INSTRUCTIONS.md §3).
   const records = await JobOrderModel.find({
     billVerifiedAt: { $ne: null },
     paymentVerifiedAt: null,
-    ...(user ? { createdBy: user._id } : {}),
+    ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
   }).sort({ "billDocument.generatedAt": -1 });
 
   const data: StaffPendingJobOrder[] = await Promise.all(
@@ -28,6 +29,7 @@ export default async function StaffPendingJobOrdersPage() {
       paymentProofType: record.paymentProof?.fileType,
       paymentProofUrl: record.paymentProof ? await getSignedImageUrl(record.paymentProof.s3Key) : undefined,
       paymentProofVerified: record.paymentProofVerifiedAt !== null,
+      isAdminAssigned: Boolean(user) && record.createdBy.toString() !== user!._id.toString(),
     })),
   );
 

@@ -83,6 +83,10 @@ export interface ActiveJobOrder {
   documentName?: string;
   /** Signed, short-lived S3 URL for the generated bill — only present alongside `documentName`. */
   documentUrl?: string;
+  /** True when Admin created this job order and assigned it to this Staff member
+   *  (`JobOrder.createdBy !== this Staff member`) — as opposed to Staff having created it
+   *  themselves. Drives the "Admin Assignment" badge so Staff can tell the two apart. */
+  isAdminAssigned: boolean;
 }
 
 export interface JobOrderHistoryRecord {
@@ -99,6 +103,9 @@ export interface JobOrderHistoryRecord {
    *  `JobOrder.profit`, frozen at bill generation) or the Staff member's own profit share
    *  (`JobOrder.commissionValue`) — this type itself doesn't know which. */
   profit: number;
+  /** Staff-only — see `ActiveJobOrder.isAdminAssigned`. Admin's own History page leaves this
+   *  undefined, since the distinction is meaningless from Admin's vantage point. */
+  isAdminAssigned?: boolean;
 }
 
 /** How far a job order has progressed through the 3-step creation wizard (Step 1: Create Job Order, Step 2: Receipts Uploads, Step 3: Markup & Summary). Drives Admin's Active table status badge and gates "Generate Bill". */
@@ -196,6 +203,9 @@ export interface StaffPendingJobOrder {
   /** Whether Admin has confirmed the uploaded proof looks legitimate — read-only status for Staff,
    *  shown as "Verified"; the final "Payment Complete" step is Admin-only. */
   paymentProofVerified: boolean;
+  /** See `ActiveJobOrder.isAdminAssigned` — true when Admin created this job order and assigned it
+   *  to this Staff member, rather than Staff having created it themselves. */
+  isAdminAssigned: boolean;
 }
 
 /**
