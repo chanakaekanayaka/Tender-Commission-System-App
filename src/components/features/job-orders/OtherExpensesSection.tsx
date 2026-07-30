@@ -51,7 +51,7 @@ export function OtherExpensesSection({
                 onClick={() => onRemove(expense.id)}
                 disabled={disabled}
                 aria-label={t("jobOrderCreate.removeExpense")}
-                className="justify-self-start rounded-none border border-border p-2 text-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                className="justify-self-start rounded-none border border-border p-2 text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
               </button>

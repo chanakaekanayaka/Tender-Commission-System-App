@@ -11,7 +11,9 @@ interface JobOrderSummaryCardProps {
   markupValue: number;
   commissionValue: number;
   otherExpensesTotal: number;
-  profit: number;
+  /** New Total minus Other Expenses — shown as the bottom-line figure, labeled "Loss" and red when
+   *  negative, "Overall Profit" and green otherwise. Same number for both roles. */
+  overallProfit: number;
 }
 
 const FLASH_DURATION_MS = 700;
@@ -63,15 +65,16 @@ export function JobOrderSummaryCard({
   markupValue,
   commissionValue,
   otherExpensesTotal,
-  profit,
+  overallProfit,
 }: JobOrderSummaryCardProps) {
   const { t } = useTranslation();
   const removedValue = originalTotal - newTotal;
+  const isLoss = overallProfit < 0;
 
   const markupFlash = useFlashOnChange(markupValue);
   const commissionFlash = useFlashOnChange(commissionValue);
   const otherExpensesFlash = useFlashOnChange(otherExpensesTotal);
-  const profitFlash = useFlashOnChange(profit);
+  const profitFlash = useFlashOnChange(overallProfit);
 
   return (
     <Card title={t("jobOrderCreate.summaryHeading")}>
@@ -106,18 +109,14 @@ export function JobOrderSummaryCard({
 
       <div
         className={`-mx-4 mt-4 flex items-center justify-between gap-3 border-t border-border px-4 pt-4 transition-colors duration-700 ease-out ${
-          profitFlash ? (profit < 0 ? "bg-red-50" : "bg-emerald-50") : ""
+          profitFlash ? (isLoss ? "bg-red-50" : "bg-green-50") : ""
         }`}
       >
         <p className="text-sm font-semibold tracking-wide text-muted uppercase">
-          {t("jobOrderCreate.profit")}
+          {isLoss ? t("jobOrderCreate.loss") : t("jobOrderCreate.profit")}
         </p>
-        <p
-          className={`text-xl font-bold transition-colors duration-700 ease-out ${
-            profit < 0 ? "text-red-600" : profitFlash ? "text-emerald-600" : "text-ink"
-          }`}
-        >
-          {formatLKR(Math.round(profit))}
+        <p className={`text-xl font-bold ${isLoss ? "text-red-600" : "text-green-600"}`}>
+          {formatLKR(Math.round(overallProfit))}
         </p>
       </div>
     </Card>

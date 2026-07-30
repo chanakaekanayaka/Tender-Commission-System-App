@@ -67,7 +67,7 @@ export function ReceiptsList({ receipts, onAmountChange, onRemove }: ReceiptsLis
                 type="button"
                 onClick={() => onRemove(receipt.id)}
                 aria-label={t("jobOrderCreate.removeReceipt")}
-                className="justify-self-start rounded-none border border-border p-2 text-muted hover:text-ink"
+                className="justify-self-start rounded-none border border-border p-2 text-red-600 hover:text-red-700"
               >
                 <Trash2 className="h-4 w-4" aria-hidden />
               </button>

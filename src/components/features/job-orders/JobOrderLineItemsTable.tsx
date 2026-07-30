@@ -44,7 +44,7 @@ export function JobOrderLineItemsTable({ items, vatRate, onRemove }: JobOrderLin
               type="button"
               onClick={() => onRemove(row.id)}
               aria-label={t("jobOrderCreate.removeItem")}
-              className="text-muted hover:text-ink"
+              className="text-red-600 hover:text-red-700"
             >
               <Trash2 className="h-4 w-4" aria-hidden />
             </button>

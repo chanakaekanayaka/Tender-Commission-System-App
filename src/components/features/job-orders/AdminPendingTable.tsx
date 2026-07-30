@@ -188,7 +188,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
                       type="button"
                       onClick={() => handleCompletePayment(row.id)}
                       disabled={completingId === row.id}
-                      className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-none bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {completingId === row.id
                         ? t("jobOrderPending.completingPayment")
@@ -200,7 +200,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
                       onClick={() => handleVerifyProof(row.id)}
                       disabled={verifyingId === row.id || !row.paymentProofName}
                       title={!row.paymentProofName ? t("jobOrderPending.proofRequired") : undefined}
-                      className="rounded-none bg-active px-3 py-1.5 text-xs font-medium text-active-ink hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-none bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {verifyingId === row.id ? t("jobOrderPending.verifying") : t("jobOrderPending.verifyPayment")}
                     </button>

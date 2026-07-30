@@ -7,6 +7,7 @@ import { JobOrderContextSummary } from "@/components/features/job-orders/JobOrde
 import { JobOrderSummaryCard } from "@/components/features/job-orders/JobOrderSummaryCard";
 import { useJobOrderWizard } from "@/components/features/job-orders/JobOrderWizardContext";
 import { useTranslation } from "@/context/LanguageContext";
+import { formatLKR } from "@/lib/utils/currency";
 
 export function JobOrderStepMarkup() {
   const { t } = useTranslation();
@@ -26,9 +27,10 @@ export function JobOrderStepMarkup() {
     commissionZeroed,
     setCommissionZeroed,
     otherExpensesTotal,
-    profit,
   } = useJobOrderWizard();
   const isAdmin = role === "admin";
+  const isLoss = profitBase < 0;
+  const commissionDisabled = commissionZeroed || (!isAdmin && isLoss);
 
   return (
     <>
@@ -36,18 +38,19 @@ export function JobOrderStepMarkup() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
         <div className="space-y-4">
-          <Card title={t("jobOrderCreate.markupHeading")}>
-            {/* Staff sees this read-only — they drive the split from Commission instead (their own
-                rate), Markup comes back as its complement (see JobOrderWizardContext). */}
-            <AmountPercentInput
-              base={profitBase}
-              value={markupValue}
-              percent={markupPercent}
-              onValueChange={isAdmin ? setMarkupValue : undefined}
-              onPercentChange={isAdmin ? setMarkupPercent : undefined}
-              disabled={!isAdmin}
-            />
-          </Card>
+          {/* Staff drives the split from Commission instead (their own rate) — Markup is purely an
+              Admin concern (the company's own share), so Staff doesn't see this section at all. */}
+          {isAdmin && (
+            <Card title={t("jobOrderCreate.markupHeading")}>
+              <AmountPercentInput
+                base={profitBase}
+                value={markupValue}
+                percent={markupPercent}
+                onValueChange={setMarkupValue}
+                onPercentChange={setMarkupPercent}
+              />
+            </Card>
+          )}
 
           <Card
             title={t("jobOrderCreate.commissionHeading")}
@@ -67,8 +70,16 @@ export function JobOrderStepMarkup() {
               percent={commissionPercent}
               onValueChange={setCommissionValue}
               onPercentChange={setCommissionPercent}
-              disabled={commissionZeroed}
+              disabled={commissionDisabled}
             />
+            {!isAdmin && isLoss && (
+              <p className="mt-1 text-xs text-red-600">{t("jobOrderCreate.commissionDisabledOnLoss")}</p>
+            )}
+            {!isAdmin && !isLoss && (
+              <p className="mt-1 text-xs text-muted">
+                {t("jobOrderCreate.yourCommission")}: {formatLKR(Math.round(commissionValue))}
+              </p>
+            )}
           </Card>
         </div>
 
@@ -78,7 +89,7 @@ export function JobOrderStepMarkup() {
           markupValue={markupValue}
           commissionValue={commissionValue}
           otherExpensesTotal={otherExpensesTotal}
-          profit={profit}
+          overallProfit={profitBase}
         />
       </div>
     </>
