@@ -2,41 +2,27 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
-import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
-import type { AdminExpenseHistoryRecord } from "@/shared/types/other-expense.types";
+import type { StaffExpensePendingRecord } from "@/shared/types/other-expense.types";
 
-interface AdminExpenseHistoryProps {
-  data: AdminExpenseHistoryRecord[];
+interface StaffExpensePendingTableProps {
+  data: StaffExpensePendingRecord[];
 }
 
-/** Admin's Other Expenses history — every Staff-submitted expense already reviewed (Approved or
- *  Rejected), searchable by staff name or description. */
-export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
+/** Staff's own submitted expenses still awaiting Admin's Approve/Reject decision — read-only. */
+export function StaffExpensePendingTable({ data }: StaffExpensePendingTableProps) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
-
-  const filtered = data.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.staffName, row.description].join(" ").toLowerCase().includes(q);
-  });
   const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
     <div>
-      <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("otherExpenses.searchPlaceholder")} />
-      </div>
-
       <DataTable
         columns={[
-          { id: "staffName", header: t("otherExpenses.staffName"), cell: (row) => row.staffName },
           { id: "description", header: t("otherExpenses.description"), cell: (row) => row.description },
           { id: "date", header: t("otherExpenses.date"), cell: (row) => row.date },
           { id: "amount", header: t("otherExpenses.amount"), cell: (row) => formatLKR(row.amount) },
@@ -50,18 +36,12 @@ export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
           {
             id: "status",
             header: t("common.status"),
-            cell: (row) => (
-              <StatusBadge
-                label={row.status === "Approved" ? t("otherExpenses.approved") : t("otherExpenses.rejected")}
-                tone={row.status === "Approved" ? "green" : "red"}
-              />
-            ),
+            cell: () => <StatusBadge label={t("otherExpenses.pending")} tone="amber" />,
           },
-          { id: "reviewedDate", header: t("otherExpenses.reviewedDate"), cell: (row) => row.reviewedDate },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
-        emptyMessage={t("otherExpenses.noResults")}
+        emptyMessage={t("otherExpenses.noPending")}
       />
 
       <DocumentPreviewModal

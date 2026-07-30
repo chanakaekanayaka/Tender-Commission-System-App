@@ -10,26 +10,58 @@ export interface OtherExpenseRecord {
   receiptFileName?: string;
 }
 
-export const EXPENSE_CATEGORIES = [
-  "Transport",
-  "Printing & Stationery",
-  "Courier",
-  "Site Visit",
-  "Miscellaneous",
-] as const;
+/** Review status for the real, isolated "Other Expenses" reimbursement flow (Staff submits, Admin
+ *  approves/rejects) — distinct from `OtherExpenseStatus` above, which belongs to the still-mock
+ *  Invoices feature. */
+export type ExpenseReviewStatus = "Pending" | "Approved" | "Rejected";
 
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
-
-export type AdminExpenseStatus = "Approved" | "Pending";
-
-/** Admin's Other Expenses record — a job-order-linked expense (distinct from the staff-recorded, invoice-bound OtherExpenseRecord above), tracked through an Approve/Pending review state. */
-export interface AdminExpenseRecord {
+/** Staff's own Pending Expenses row — their submission awaiting Admin's decision. */
+export interface StaffExpensePendingRecord {
   id: string;
-  jobOrderNo: string;
-  category: ExpenseCategory;
   description: string;
   amount: number;
   date: string;
-  status: AdminExpenseStatus;
   receiptFileName?: string;
+  /** MIME type — drives DocumentPreviewModal's image/PDF rendering. Only present alongside `receiptFileName`. */
+  receiptFileType?: string;
+  receiptUrl?: string;
+}
+
+/** Staff's own Expense History row — already reviewed (Approved or Rejected). */
+export interface StaffExpenseHistoryRecord {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  status: "Approved" | "Rejected";
+  receiptFileName?: string;
+  receiptFileType?: string;
+  receiptUrl?: string;
+  reviewedDate: string;
+}
+
+/** Admin's Pending Expenses row — every Staff-submitted expense awaiting Approve/Reject. */
+export interface AdminExpensePendingRecord {
+  id: string;
+  staffName: string;
+  description: string;
+  amount: number;
+  date: string;
+  receiptFileName?: string;
+  receiptFileType?: string;
+  receiptUrl?: string;
+}
+
+/** Admin's Expense History row — already reviewed (Approved or Rejected). */
+export interface AdminExpenseHistoryRecord {
+  id: string;
+  staffName: string;
+  description: string;
+  amount: number;
+  date: string;
+  status: "Approved" | "Rejected";
+  receiptFileName?: string;
+  receiptFileType?: string;
+  receiptUrl?: string;
+  reviewedDate: string;
 }
