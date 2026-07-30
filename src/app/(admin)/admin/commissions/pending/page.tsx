@@ -12,11 +12,15 @@ export default async function AdminCommissionsPendingPage() {
   await connectDB();
   // Every job order whose bill has been verified but whose commission hasn't been paid or
   // rejected yet — deliberately independent of paymentVerifiedAt, since Staff can be paid their
-  // commission before the procuring entity has paid the company.
+  // commission before the procuring entity has paid the company. Bundled-into-an-invoice ones are
+  // excluded — see invoiceId (they're resolved together when that invoice is paid instead).
   const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billVerifiedAt: { $ne: null }, commissionPaidAt: null, commissionRejectedAt: null }).sort({
-      billVerifiedAt: -1,
-    }),
+    JobOrderModel.find({
+      billVerifiedAt: { $ne: null },
+      commissionPaidAt: null,
+      commissionRejectedAt: null,
+      invoiceId: null,
+    }).sort({ billVerifiedAt: -1 }),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;

@@ -104,6 +104,11 @@ export interface JobOrderDocument extends Document {
    *  order's commission (e.g. a dispute). Removes it from Commissions Pending without adding it to
    *  History, since nothing was actually paid. */
   commissionRejectedAt: Date | null;
+  /** Set by POST /api/invoices when Staff bundles this commission into an invoice — removes it
+   *  from Commissions Pending (both the standalone list and any other invoice) until that invoice
+   *  is resolved, so the same commission can never be double-invoiced or double-paid. Cleared back
+   *  to null only if that invoice concept needs undoing, which no current route does. */
+  invoiceId: Types.ObjectId | null;
   /** Set by POST /api/job-orders/[id]/payment-proof — Staff uploads evidence (bank slip, cheque
    *  copy, etc.) once the procuring entity actually pays, so Admin has something to check before
    *  verifying it. Null until uploaded; uploading again replaces it. */
@@ -207,6 +212,7 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     paymentVerifiedAt: { type: Date, default: null },
     commissionPaidAt: { type: Date, default: null },
     commissionRejectedAt: { type: Date, default: null },
+    invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice", default: null },
     paymentProof: { type: paymentProofSchema, default: null },
     expensesZeroed: { type: Boolean, default: false },
     markupValue: { type: Number, required: true, min: 0 },
