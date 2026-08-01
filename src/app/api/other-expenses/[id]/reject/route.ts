@@ -28,6 +28,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     if (expense.invoiceId) {
       return apiError("This expense is bundled into an invoice — resolve it there instead.", 400);
     }
+    if (expense.paymentProof) {
+      return apiError("This expense has already been paid — resolve it via confirmation instead.", 400);
+    }
 
     expense.status = "Rejected";
     expense.reviewedAt = new Date();

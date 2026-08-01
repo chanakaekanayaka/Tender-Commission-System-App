@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { DataTable } from "@/components/ui/DataTable";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { Toggle } from "@/components/ui/Toggle";
 import { useTranslation } from "@/context/LanguageContext";
@@ -112,8 +113,11 @@ export function StaffInvoiceModule({ commissions, expenses }: StaffInvoiceModule
                   checked={selectedExpenseIds.includes(expense.id)}
                   onChange={(checked) => toggleExpense(expense.id, checked)}
                   label={
-                    <span className="flex flex-col">
-                      <span>{expense.description}</span>
+                    <span className="flex flex-col gap-1">
+                      <span className="flex items-center gap-2">
+                        {expense.description}
+                        <StatusBadge label={t("invoices.claimable")} tone="blue" />
+                      </span>
                       <span className="text-xs text-muted">{formatLKR(expense.amount)}</span>
                     </span>
                   }

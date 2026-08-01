@@ -6,6 +6,13 @@ export interface OtherExpenseReceiptSubdoc {
   s3Key: string;
 }
 
+export interface OtherExpensePaymentProofSubdoc {
+  fileName: string;
+  fileType: string;
+  s3Key: string;
+  uploadedAt: Date;
+}
+
 export type OtherExpenseStatus = "Pending" | "Approved" | "Rejected";
 
 /**
@@ -24,8 +31,19 @@ export interface OtherExpenseDocument extends Document {
   date: string;
   receipt: OtherExpenseReceiptSubdoc | null;
   status: OtherExpenseStatus;
-  /** Set by PATCH .../approve or .../reject — null while still Pending. */
+  /** Set by PATCH .../confirm-payment (Approved) or .../reject (Rejected) — null while still
+   *  Pending. For the Approved path this is Staff's confirmation time, not Admin's upload time —
+   *  see `paymentConfirmedAt`. */
   reviewedAt: Date | null;
+  /** Admin's evidence of having reimbursed Staff — set by PATCH .../approve alongside uploading it.
+   *  A checkpoint, not the final word: `status` stays "Pending" until Staff reviews this and
+   *  confirms (see `paymentConfirmedAt`), same two-stage pattern as JobOrder's own
+   *  commissionPaidAt/commissionPaymentConfirmedAt. Null until Admin uploads. */
+  paymentProof: OtherExpensePaymentProofSubdoc | null;
+  /** Set by PATCH .../confirm-payment — Staff confirming they've reviewed `paymentProof` and
+   *  actually received the reimbursement. This, not merely `paymentProof` existing, is what flips
+   *  `status` to "Approved" and moves the row into History for both roles. Null until confirmed. */
+  paymentConfirmedAt: Date | null;
   /** Set by POST /api/invoices when Staff bundles this expense into an invoice — removes it from
    *  Expenses Pending until that invoice is resolved, so it can never be double-invoiced. */
   invoiceId: Types.ObjectId | null;
@@ -43,6 +61,16 @@ const receiptSchema = new Schema<OtherExpenseReceiptSubdoc>(
   { _id: false },
 );
 
+const paymentProofSchema = new Schema<OtherExpensePaymentProofSubdoc>(
+  {
+    fileName: { type: String, required: true },
+    fileType: { type: String, required: true },
+    s3Key: { type: String, required: true },
+    uploadedAt: { type: Date, required: true },
+  },
+  { _id: false },
+);
+
 const otherExpenseSchema = new Schema<OtherExpenseDocument>(
   {
     description: { type: String, required: true, trim: true },
@@ -51,6 +79,8 @@ const otherExpenseSchema = new Schema<OtherExpenseDocument>(
     receipt: { type: receiptSchema, default: null },
     status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" },
     reviewedAt: { type: Date, default: null },
+    paymentProof: { type: paymentProofSchema, default: null },
+    paymentConfirmedAt: { type: Date, default: null },
     invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice", default: null },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
   },

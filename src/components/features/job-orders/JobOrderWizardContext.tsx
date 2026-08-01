@@ -517,10 +517,14 @@ export function JobOrderWizardProvider({
     markupMode === "percentage" ? valueFromPercent(profitBase, markupPercentInput) : markupValueInput;
   const markupOwnPercent =
     markupMode === "percentage" ? markupPercentInput : percentFromValue(profitBase, markupValueInput);
+  // Unlike Markup, Sales Commission's percentage is a share of New Total (not the profit base) —
+  // the staff member's cut is meant to track the order's total value, not what's left after
+  // expenses. Only this value/percent pair uses `newTotal`; the split against `profitBase` below
+  // (and Overall Profit itself) is unaffected.
   const commissionOwnValue =
-    commissionMode === "percentage" ? valueFromPercent(profitBase, commissionPercentInput) : commissionValueInput;
+    commissionMode === "percentage" ? valueFromPercent(newTotal, commissionPercentInput) : commissionValueInput;
   const commissionOwnPercent =
-    commissionMode === "percentage" ? commissionPercentInput : percentFromValue(profitBase, commissionValueInput);
+    commissionMode === "percentage" ? commissionPercentInput : percentFromValue(newTotal, commissionValueInput);
 
   // Company Profit (the company's share) and Sales Commission (the sales agent's share) split
   // Overall Profit — Admin can drive the split from either side; Staff can only ever drive it from

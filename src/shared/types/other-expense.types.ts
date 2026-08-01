@@ -15,8 +15,11 @@ export interface OtherExpenseRecord {
  *  Invoices feature. */
 export type ExpenseReviewStatus = "Pending" | "Approved" | "Rejected";
 
-/** Staff's own Pending Expenses row — their submission awaiting Admin's decision, or already
- *  bundled into an invoice awaiting that invoice's own resolution. */
+/** Staff's own Pending Expenses row — covers two stages, same as Admin's own pending row (see
+ *  `AdminExpensePendingRecord`): `paymentProof*`/`paymentUploadedAt` are all undefined while
+ *  awaiting Admin's decision (nothing to confirm yet), and populated once Admin approves and
+ *  uploads a receipt — only then is PATCH confirm-payment actually reachable. Or already bundled
+ *  into an invoice awaiting that invoice's own resolution. */
 export interface StaffExpensePendingRecord {
   id: string;
   description: string;
@@ -26,9 +29,17 @@ export interface StaffExpensePendingRecord {
   /** MIME type — drives DocumentPreviewModal's image/PDF rendering. Only present alongside `receiptFileName`. */
   receiptFileType?: string;
   receiptUrl?: string;
+  paymentProofFileName?: string;
+  paymentProofFileType?: string;
+  /** Signed, short-lived S3 URL for Admin's uploaded payment receipt — undefined until Admin approves. */
+  paymentProofUrl?: string;
+  /** Formatted "YYYY-MM-DD HH:MM" in Sri Lanka local time (see `formatDateTime`) — undefined until
+   *  Admin approves. */
+  paymentUploadedAt?: string;
 }
 
-/** Staff's own Expense History row — already reviewed (Approved or Rejected). */
+/** Staff's own Expense History row — already reviewed (Approved or Rejected). Payment receipt
+ *  fields are only present for Approved rows — Rejected ones never had a reimbursement paid out. */
 export interface StaffExpenseHistoryRecord {
   id: string;
   description: string;
@@ -39,10 +50,24 @@ export interface StaffExpenseHistoryRecord {
   receiptFileType?: string;
   receiptUrl?: string;
   reviewedDate: string;
+  paymentProofFileName?: string;
+  paymentProofFileType?: string;
+  paymentProofUrl?: string;
+  paymentUploadedAt?: string;
+  /** Set only when this expense was settled by bundling it into an Invoice (see
+   *  `OtherExpense.invoiceId`) rather than approved individually — lets Staff trace which invoice
+   *  covered it. */
+  invoiceNo?: string;
 }
 
-/** Admin's Pending Expenses row — every Staff-submitted expense awaiting Approve/Reject (that
- *  hasn't already been bundled into an invoice). */
+/**
+ * Admin's Pending Expenses row — every Staff-submitted expense not yet confirmed by Staff (that
+ * hasn't already been bundled into an invoice), covering two stages in one table:
+ * `awaitingStaffConfirmation: false` means Upload/Reject are still live (Admin hasn't approved
+ * yet); `true` means Admin already approved and uploaded a payment receipt, so those actions are
+ * replaced with a read-only "awaiting Staff" indicator until Staff confirms via confirm-payment
+ * and the row leaves for History.
+ */
 export interface AdminExpensePendingRecord {
   id: string;
   staffName: string;
@@ -52,9 +77,15 @@ export interface AdminExpensePendingRecord {
   receiptFileName?: string;
   receiptFileType?: string;
   receiptUrl?: string;
+  awaitingStaffConfirmation: boolean;
+  paymentProofFileName?: string;
+  paymentProofFileType?: string;
+  paymentProofUrl?: string;
+  paymentUploadedAt?: string;
 }
 
-/** Admin's Expense History row — already reviewed (Approved or Rejected). */
+/** Admin's Expense History row — already reviewed (Approved or Rejected). Payment receipt fields
+ *  are only present for Approved rows — Rejected ones never had a reimbursement paid out. */
 export interface AdminExpenseHistoryRecord {
   id: string;
   staffName: string;
@@ -66,4 +97,12 @@ export interface AdminExpenseHistoryRecord {
   receiptFileType?: string;
   receiptUrl?: string;
   reviewedDate: string;
+  paymentProofFileName?: string;
+  paymentProofFileType?: string;
+  paymentProofUrl?: string;
+  paymentUploadedAt?: string;
+  /** Set only when this expense was settled by bundling it into an Invoice (see
+   *  `OtherExpense.invoiceId`) rather than approved individually — lets Admin trace which invoice
+   *  covered it. */
+  invoiceNo?: string;
 }

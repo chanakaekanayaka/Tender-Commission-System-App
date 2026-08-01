@@ -35,6 +35,8 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   const [expensePreview, setExpensePreview] = useState<JobOrderExpenseBreakdownItem | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const filtered = rows.filter((row) => {
@@ -96,8 +98,31 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
     }
   };
 
+  // Soft delete — the row leaves Active for good (surfaces in History instead, marked "Deleted"),
+  // so it's dropped from local state on success, same as a successful Verify.
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/job-orders/${id}/delete`, { method: "PATCH" });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to delete job order.");
+      }
+      setRows((prev) => prev.filter((row) => row.id !== id));
+      setDeleteConfirmId(null);
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to delete job order.",
+        variant: "error",
+      });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const previewRow = rows.find((row) => row.id === previewId) ?? null;
   const detailsRow = rows.find((row) => row.id === detailsId) ?? null;
+  const deleteConfirmRow = rows.find((row) => row.id === deleteConfirmId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
@@ -195,9 +220,22 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
                   {!row.billSubmitted && (
                     <span className="text-xs text-muted">{t("activeJobOrders.awaitingSubmission")}</span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirmId(row.id)}
+                    className="inline-flex items-center gap-1.5 rounded-none border border-red-600 bg-surface px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  >
+                    {t("activeJobOrders.delete")}
+                  </button>
                 </div>
               ) : (
-                <span className="text-xs text-muted">—</span>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmId(row.id)}
+                  className="inline-flex items-center gap-1.5 rounded-none border border-red-600 bg-surface px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                >
+                  {t("activeJobOrders.delete")}
+                </button>
               ),
           },
         ]}
@@ -295,6 +333,38 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
         fileType={expensePreview?.fileType}
         url={expensePreview?.fileUrl}
       />
+
+      <Modal
+        open={deleteConfirmRow !== null}
+        onClose={() => setDeleteConfirmId(null)}
+        title={t("activeJobOrders.deleteConfirmTitle")}
+      >
+        {deleteConfirmRow && (
+          <div className="space-y-4">
+            <p className="text-sm text-ink">
+              {t("activeJobOrders.deleteConfirmMessage", { jobOrderNo: deleteConfirmRow.jobOrderNo })}
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="rounded-none border border-border bg-card px-4 py-2 text-sm font-medium text-ink hover:bg-active/5"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(deleteConfirmRow.id)}
+                disabled={deletingId === deleteConfirmRow.id}
+                className="inline-flex items-center gap-1.5 rounded-none bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingId === deleteConfirmRow.id && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+                {deletingId === deleteConfirmRow.id ? t("activeJobOrders.deleting") : t("activeJobOrders.delete")}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -13,33 +13,61 @@ interface AdminPendingCommissionsProps {
   data: AdminPendingCommission[];
 }
 
+const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+
 /**
- * Admin's Pending Commissions — one row per Job Order whose commission is awaiting a payout
- * decision. Approve pays Staff their commission (PATCH pay-commission) and Reject declines it
- * (PATCH reject-commission) — both real, independent of whether the procuring entity has paid the
- * company yet. Client-only because of the Approve/Reject + search state, same split as
- * JobOrderHistoryTable.
+ * Admin's Pending Commissions — one row per Job Order whose commission hasn't been confirmed yet,
+ * covering two stages. Unpaid: Upload pays Staff their commission (PATCH pay-commission), which
+ * requires a payment receipt as evidence; Reject declines it outright (PATCH reject-commission) —
+ * both independent of whether the procuring entity has paid the company yet. Already paid
+ * (`awaitingStaffConfirmation`): Upload/Reject are replaced with a read-only indicator, since
+ * there's nothing left for Admin to do until Staff reviews the receipt and confirms it on their own
+ * side — that confirmation, not the upload itself, is what actually moves the row to History.
+ * Client-only because of the Upload/Reject + search state, same split as JobOrderHistoryTable.
  */
 export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) {
   const { t } = useTranslation();
   const [rows, setRows] = useState(data);
   const [query, setQuery] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [approvingRowId, setApprovingRowId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleApprove = async (row: AdminPendingCommission) => {
-    setProcessingId(row.id);
+  // Approve is a two-step click: this just opens the file picker for the row in question; the
+  // actual PATCH only fires once a receipt is actually chosen (see handleFileChange).
+  const startApprove = (row: AdminPendingCommission) => {
+    setApprovingRowId(row.id);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (file: File | undefined) => {
+    const rowId = approvingRowId;
+    if (!file || !rowId) return;
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setToast({ message: t("commissions.receiptInvalidType"), variant: "error" });
+      return;
+    }
+
+    setProcessingId(rowId);
     try {
-      const res = await fetch(`/api/job-orders/${row.id}/pay-commission`, { method: "PATCH" });
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/job-orders/${rowId}/pay-commission`, { method: "PATCH", body: formData });
       const result = await res.json();
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to pay commission.");
       }
-      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      // Stays in Pending — it only actually leaves once Staff confirms (see
+      // confirm-commission-payment) — so this updates the row in place (uploaded, awaiting Staff)
+      // instead of removing it.
+      setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, awaitingStaffConfirmation: true } : r)));
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to pay commission.", variant: "error" });
     } finally {
       setProcessingId(null);
+      setApprovingRowId(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -89,36 +117,52 @@ export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) 
           {
             id: "status",
             header: t("common.status"),
-            cell: () => <StatusBadge label={t("commissions.pendingStatus")} tone="amber" />,
+            cell: (row) =>
+              row.awaitingStaffConfirmation ? (
+                <StatusBadge label={t("commissions.awaitingStaffVerification")} tone="blue" />
+              ) : (
+                <StatusBadge label={t("commissions.pendingStatus")} tone="amber" />
+              ),
           },
           {
             id: "actions",
             header: t("common.actions"),
-            cell: (row) => (
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleApprove(row)}
-                  disabled={processingId === row.id}
-                  className="text-xs font-medium text-green-700 underline hover:text-green-800 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
-                >
-                  {t("commissions.approve")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleReject(row)}
-                  disabled={processingId === row.id}
-                  className="text-xs font-medium text-red-600 underline hover:text-red-700 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
-                >
-                  {t("commissions.reject")}
-                </button>
-              </div>
-            ),
+            cell: (row) =>
+              row.awaitingStaffConfirmation ? (
+                <span className="text-xs text-muted">{t("commissions.awaitingStaffVerification")}</span>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => startApprove(row)}
+                    disabled={processingId === row.id}
+                    className="text-xs font-medium text-green-700 underline hover:text-green-800 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+                  >
+                    {processingId === row.id ? t("commissions.uploading") : t("commissions.upload")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleReject(row)}
+                    disabled={processingId === row.id}
+                    className="text-xs font-medium text-red-600 underline hover:text-red-700 disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
+                  >
+                    {t("commissions.reject")}
+                  </button>
+                </div>
+              ),
           },
         ]}
         data={filtered}
         rowKey={(row) => row.id}
         emptyMessage={t("commissions.noPending")}
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(e) => handleFileChange(e.target.files?.[0])}
       />
 
       {toast && <Toast {...toast} onDismiss={() => setToast(null)} />}

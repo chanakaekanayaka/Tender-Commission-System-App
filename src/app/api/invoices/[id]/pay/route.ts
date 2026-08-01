@@ -16,9 +16,13 @@ const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 /** Admin uploading the payment bill/receipt that settles an invoice in full — the one action that
- *  marks it Paid. Cascades to every commission and expense the invoice bundled: each linked Job
- *  Order gets commissionPaidAt set, each linked Other Expense gets Approved, so their own
- *  standalone History pages stay consistent with this invoice being paid. */
+ *  marks it Paid. Cascades to every commission and expense the invoice bundled, fully finalizing
+ *  each one (not just a checkpoint): every linked Job Order gets commissionPaidAt AND
+ *  commissionPaymentConfirmedAt set (bundling into an invoice is itself Staff's request for
+ *  payment, so there's no separate post-payment confirmation step the way the standalone
+ *  pay-commission flow has), and every linked Other Expense gets Approved the same way. Both also
+ *  get the invoice's own bill recorded as their own payment proof, so their standalone History
+ *  pages show the same receipt without any extra plumbing. */
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
   const { error } = requireRole(request, "Admin");
   if (error) return error;
@@ -64,12 +68,20 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       .map((item: InvoiceLineItemSubdoc) => item.refId);
     const now = new Date();
 
+    const paymentProof = { fileName: file.name, fileType: file.type, s3Key, uploadedAt: now };
+
     await Promise.all([
       jobOrderIds.length > 0
-        ? JobOrderModel.updateMany({ _id: { $in: jobOrderIds } }, { commissionPaidAt: now })
+        ? JobOrderModel.updateMany(
+            { _id: { $in: jobOrderIds } },
+            { commissionPaidAt: now, commissionPaymentProof: paymentProof, commissionPaymentConfirmedAt: now },
+          )
         : Promise.resolve(),
       expenseIds.length > 0
-        ? OtherExpenseModel.updateMany({ _id: { $in: expenseIds } }, { status: "Approved", reviewedAt: now })
+        ? OtherExpenseModel.updateMany(
+            { _id: { $in: expenseIds } },
+            { status: "Approved", reviewedAt: now, paymentProof, paymentConfirmedAt: now },
+          )
         : Promise.resolve(),
     ]);
 

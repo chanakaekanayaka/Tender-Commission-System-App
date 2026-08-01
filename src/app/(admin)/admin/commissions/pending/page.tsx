@@ -4,20 +4,25 @@ import connectDB from "@/lib/db/connectDB";
 import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { UserModel } from "@/lib/db/models/User.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
-import { getProfitBase } from "@/lib/utils/jobOrderExpenses";
+import { getNewTotal, getProfitBase } from "@/lib/utils/jobOrderExpenses";
 import { percentFromValue } from "@/lib/utils/pricing";
 import type { AdminPendingCommission } from "@/shared/types/commission.types";
 
 export default async function AdminCommissionsPendingPage() {
   await connectDB();
-  // Every job order whose bill has been verified but whose commission hasn't been paid or
-  // rejected yet — deliberately independent of paymentVerifiedAt, since Staff can be paid their
-  // commission before the procuring entity has paid the company. Bundled-into-an-invoice ones are
-  // excluded — see invoiceId (they're resolved together when that invoice is paid instead).
+  // Every job order whose bill AND payment proof have been verified but whose commission payment
+  // hasn't been confirmed by Staff yet — deliberately independent of paymentVerifiedAt (the separate
+  // "Payment Complete" confirmation), since Staff can be paid their commission before the procuring
+  // entity's payment is marked fully complete. Covers both stages in one table (see
+  // AdminPendingCommission's own doc comment): still-unpaid rows (Upload/Reject are live) and
+  // already-paid-but-unconfirmed rows (read-only, awaiting Staff — see confirm-commission-payment).
+  // Bundled-into-an-invoice ones are excluded — see invoiceId (they're resolved together when that
+  // invoice is paid instead).
   const [records, systemConfig] = await Promise.all([
     JobOrderModel.find({
       billVerifiedAt: { $ne: null },
-      commissionPaidAt: null,
+      paymentProofVerifiedAt: { $ne: null },
+      commissionPaymentConfirmedAt: null,
       commissionRejectedAt: null,
       invoiceId: null,
     }).sort({ billVerifiedAt: -1 }),
@@ -31,13 +36,18 @@ export default async function AdminCommissionsPendingPage() {
 
   const data: AdminPendingCommission[] = records.map((record) => {
     const profit = getProfitBase(record, vatRate);
+    // Sales Commission is calculated against New Total, not Profit (see JobOrderWizardContext) —
+    // the rate shown here has to use the same base, or it won't match what was actually typed in
+    // the wizard.
+    const newTotal = getNewTotal(record, vatRate);
     return {
       id: record._id.toString(),
       staffName: staffNameById.get(record.createdBy.toString()) ?? "—",
       jobOrderNo: record.jobOrderNo,
       profit,
-      commissionRate: Math.round(percentFromValue(profit, record.commissionValue)),
+      commissionRate: Math.round(percentFromValue(newTotal, record.commissionValue)),
       calculatedCommission: record.commissionValue,
+      awaitingStaffConfirmation: record.commissionPaidAt !== null,
     };
   });
 

@@ -11,10 +11,13 @@ export default async function StaffPendingJobOrdersPage() {
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees their own records plus any Admin created and assigned to them
-  // (AI_INSTRUCTIONS.md §3).
+  // (AI_INSTRUCTIONS.md §3). Once Admin verifies the payment proof, Staff's own part is done — the
+  // row moves straight to Staff's own Job Order History from there (see that page), even though
+  // Admin's own Job Order Pending still shows it until they separately mark payment complete.
   const records = await JobOrderModel.find({
     billVerifiedAt: { $ne: null },
     paymentVerifiedAt: null,
+    paymentProofVerifiedAt: null,
     ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
   }).sort({ "billDocument.generatedAt": -1 });
 

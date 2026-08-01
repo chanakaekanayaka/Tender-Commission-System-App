@@ -106,6 +106,10 @@ export interface JobOrderHistoryRecord {
   /** Staff-only — see `ActiveJobOrder.isAdminAssigned`. Admin's own History page leaves this
    *  undefined, since the distinction is meaningless from Admin's vantage point. */
   isAdminAssigned?: boolean;
+  /** True for a job order Admin discarded from Job Order Active (`JobOrder.deletedAt`) rather than
+   *  one that actually completed payment — drives the "Deleted" status badge instead of
+   *  "Completed". Identical for both roles. */
+  isDeleted: boolean;
 }
 
 /** How far a job order has progressed through the 3-step creation wizard (Step 1: Create Job Order, Step 2: Receipts Uploads, Step 3: Markup & Summary). Drives Admin's Active table status badge and gates "Generate Bill". */

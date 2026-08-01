@@ -10,9 +10,12 @@ import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 export default async function AdminJobOrderHistoryPage() {
   await connectDB();
   // A job order is done for good once payment has been marked fully complete — that's the one
-  // signal that moves it out of Pending and into History (see complete-payment route).
+  // signal that moves it out of Pending and into History (see complete-payment route). A deleted
+  // job order (see the delete route) also lands here, marked "Deleted" instead of "Completed".
   const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ paymentVerifiedAt: { $ne: null } }).sort({ paymentVerifiedAt: -1 }),
+    JobOrderModel.find({ $or: [{ paymentVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] }).sort({
+      paymentVerifiedAt: -1,
+    }),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -21,7 +24,7 @@ export default async function AdminJobOrderHistoryPage() {
     id: record._id.toString(),
     jobOrderNo: record.jobOrderNo,
     procurementNo: record.procurementNo,
-    completionDate: record.paymentVerifiedAt!.toISOString().slice(0, 10),
+    completionDate: (record.paymentVerifiedAt ?? record.deletedAt)!.toISOString().slice(0, 10),
     originalTotal: record.originalLineItems.reduce(
       (sum: number, row: JobOrderLineItemSubdoc) =>
         sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
@@ -31,6 +34,9 @@ export default async function AdminJobOrderHistoryPage() {
     finalValue: getExpensesAmount(record),
     // Admin sees the company's own profit share (frozen at bill generation).
     profit: record.profit ?? 0,
+    // Boolean(...), not `!== null` — legacy job orders saved before this field existed read back
+    // `undefined` here, not `null`, which `!== null` would wrongly treat as "deleted".
+    isDeleted: Boolean(record.deletedAt),
   }));
 
   return (

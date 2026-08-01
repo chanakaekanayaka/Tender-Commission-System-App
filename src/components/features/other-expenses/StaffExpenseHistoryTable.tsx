@@ -14,14 +14,17 @@ interface StaffExpenseHistoryTableProps {
   data: StaffExpenseHistoryRecord[];
 }
 
-/** Staff's own already-reviewed expenses (Approved or Rejected). */
+/** Staff's own already-reviewed expenses (Approved or Rejected). Approved rows also carry the
+ *  payment receipt Admin uploaded and Staff confirmed, so it stays reviewable after the fact. */
 export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [paymentPreviewId, setPaymentPreviewId] = useState<string | null>(null);
 
   const filtered = data.filter((row) => row.description.toLowerCase().includes(query.trim().toLowerCase()));
   const previewRow = data.find((row) => row.id === previewId) ?? null;
+  const paymentPreviewRow = data.find((row) => row.id === paymentPreviewId) ?? null;
 
   return (
     <div>
@@ -41,6 +44,21 @@ export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps
               <JobOrderDocumentCell documentName={row.receiptFileName} onPreview={() => setPreviewId(row.id)} />
             ),
           },
+          {
+            id: "paymentReceipt",
+            header: t("otherExpenses.paymentReceipt"),
+            cell: (row) =>
+              row.paymentProofFileName ? (
+                <JobOrderDocumentCell
+                  documentName={row.paymentProofFileName}
+                  onPreview={() => setPaymentPreviewId(row.id)}
+                />
+              ) : (
+                <span className="text-xs text-muted">—</span>
+              ),
+          },
+          { id: "paymentUploadedAt", header: t("otherExpenses.uploadTime"), cell: (row) => row.paymentUploadedAt ?? "—" },
+          { id: "invoiceNo", header: t("invoices.invoiceNo"), cell: (row) => row.invoiceNo ?? "—" },
           {
             id: "status",
             header: t("common.status"),
@@ -64,6 +82,14 @@ export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps
         fileName={previewRow?.receiptFileName}
         fileType={previewRow?.receiptFileType}
         url={previewRow?.receiptUrl}
+      />
+
+      <DocumentPreviewModal
+        open={paymentPreviewRow !== null}
+        onClose={() => setPaymentPreviewId(null)}
+        fileName={paymentPreviewRow?.paymentProofFileName}
+        fileType={paymentPreviewRow?.paymentProofFileType}
+        url={paymentPreviewRow?.paymentProofUrl}
       />
     </div>
   );

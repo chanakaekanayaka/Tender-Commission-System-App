@@ -8,28 +8,24 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
 import { formatLKR } from "@/lib/utils/currency";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
-import type { AdminCommissionHistoryRecord } from "@/shared/types/commission.types";
+import type { CommissionHistoryRecord } from "@/shared/types/commission.types";
 
-interface AdminCommissionHistoryProps {
-  data: AdminCommissionHistoryRecord[];
+interface StaffCommissionHistoryProps {
+  data: CommissionHistoryRecord[];
 }
 
 /**
- * Admin's Commission History — read-only record of already-paid, Staff-confirmed commissions,
- * including the receipt Admin uploaded at payout time so it stays reviewable after the fact.
- * Client-only because of the search box + receipt preview state, same split as JobOrderHistoryTable;
- * no row actions here.
+ * Staff's Commission History — read-only record of their own already-paid, confirmed commissions,
+ * including the receipt Admin uploaded at payout time so it stays reviewable after the fact, not
+ * just while it was Pending. Client-only because of the search box + receipt preview state, same
+ * split as AdminCommissionHistory.
  */
-export function AdminCommissionHistory({ data }: AdminCommissionHistoryProps) {
+export function StaffCommissionHistory({ data }: StaffCommissionHistoryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  const filtered = data.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.staffName, row.jobOrderNo].join(" ").toLowerCase().includes(q);
-  });
+  const filtered = data.filter((row) => row.jobOrderNo.toLowerCase().includes(query.trim().toLowerCase()));
   const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
@@ -40,14 +36,8 @@ export function AdminCommissionHistory({ data }: AdminCommissionHistoryProps) {
 
       <DataTable
         columns={[
-          { id: "staffName", header: t("commissions.staffName"), cell: (row) => row.staffName },
           { id: "jobOrderNo", header: t("commissions.jobOrderNo"), cell: (row) => row.jobOrderNo },
-          { id: "profit", header: t("commissions.profit"), cell: (row) => formatLKR(row.profit) },
-          {
-            id: "commissionPaid",
-            header: t("commissions.commissionPaid"),
-            cell: (row) => formatLKR(row.commissionPaid),
-          },
+          { id: "amount", header: t("commissions.amount"), cell: (row) => formatLKR(row.amount) },
           { id: "uploadedAt", header: t("commissions.uploadTime"), cell: (row) => row.uploadedAt },
           { id: "invoiceNo", header: t("invoices.invoiceNo"), cell: (row) => row.invoiceNo ?? "—" },
           {

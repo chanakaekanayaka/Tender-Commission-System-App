@@ -12,13 +12,18 @@ export default async function StaffJobOrderHistoryPage() {
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees their own records plus any Admin created and assigned to them
-  // (AI_INSTRUCTIONS.md §3). A job order is done for good once payment has been verified — that's
-  // the one signal that moves it out of Pending and into History.
+  // (AI_INSTRUCTIONS.md §3). Staff's own part of a job order is done once Admin has verified the
+  // payment proof — Staff has nothing further to do from there, even though Admin's own Job Order
+  // Pending/History still waits for the separate "Payment Complete" confirmation (paymentVerifiedAt
+  // is only ever set once paymentProofVerifiedAt already is, so this gate covers both). A deleted
+  // job order (see the delete route) also lands here, marked "Deleted" instead of "Completed".
   const [records, systemConfig] = await Promise.all([
     JobOrderModel.find({
-      paymentVerifiedAt: { $ne: null },
-      ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
-    }).sort({ paymentVerifiedAt: -1 }),
+      $and: [
+        { $or: [{ paymentProofVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] },
+        ...(user ? [{ $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] }] : []),
+      ],
+    }).sort({ paymentProofVerifiedAt: -1 }),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -27,7 +32,7 @@ export default async function StaffJobOrderHistoryPage() {
     id: record._id.toString(),
     jobOrderNo: record.jobOrderNo,
     procurementNo: record.procurementNo,
-    completionDate: record.paymentVerifiedAt!.toISOString().slice(0, 10),
+    completionDate: (record.paymentProofVerifiedAt ?? record.deletedAt)!.toISOString().slice(0, 10),
     originalTotal: record.originalLineItems.reduce(
       (sum: number, row: JobOrderLineItemSubdoc) =>
         sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal,
@@ -38,6 +43,9 @@ export default async function StaffJobOrderHistoryPage() {
     // Staff sees their own profit share (commission), not the company's.
     profit: record.commissionValue,
     isAdminAssigned: Boolean(user) && record.createdBy.toString() !== user!._id.toString(),
+    // Boolean(...), not `!== null` — legacy job orders saved before this field existed read back
+    // `undefined` here, not `null`, which `!== null` would wrongly treat as "deleted".
+    isDeleted: Boolean(record.deletedAt),
   }));
 
   return (

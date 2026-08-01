@@ -1,5 +1,6 @@
 import { FormField } from "@/components/ui/FormField";
 import { useTranslation } from "@/context/LanguageContext";
+import type { TranslationKey } from "@/lib/i18n/locales";
 import { formatLKR } from "@/lib/utils/currency";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -15,6 +16,9 @@ interface AmountPercentInputProps {
   /** Non-interactive display — the caller is responsible for what `value`/`percent` show in this
    *  state (e.g. 0 for an explicit "set to zero" override), this only affects editability/styling. */
   disabled?: boolean;
+  /** What `base` actually is, so the helper text names it correctly — Markup is a share of profit,
+   *  Sales Commission is a share of New Total. */
+  baseLabelKey?: TranslationKey;
 }
 
 /**
@@ -31,6 +35,7 @@ export function AmountPercentInput({
   onValueChange,
   onPercentChange,
   disabled = false,
+  baseLabelKey = "jobOrderCreate.basedOnProfit",
 }: AmountPercentInputProps) {
   const { t } = useTranslation();
 
@@ -58,7 +63,7 @@ export function AmountPercentInput({
         />
       </div>
       <p className="mt-1 text-xs text-muted">
-        {t("jobOrderCreate.basedOnProfit", { base: formatLKR(Math.round(base)) })}
+        {t(baseLabelKey, { base: formatLKR(Math.round(base)) })}
       </p>
     </div>
   );

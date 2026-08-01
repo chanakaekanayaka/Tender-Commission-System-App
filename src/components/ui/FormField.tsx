@@ -14,6 +14,10 @@ interface FormFieldProps {
   step?: number;
   /** Validation message — shown below the input, which also switches to a red border. */
   error?: string;
+  /** Renders a multi-line `<textarea>` instead of `<input>` — for fields like Note where typed
+   *  content can run long and needs to stay visible instead of scrolling out of a single line. */
+  multiline?: boolean;
+  rows?: number;
 }
 
 /** Reusable labeled input — editable counterpart to the read-only metadata `Field` used in tender forms. */
@@ -29,28 +33,44 @@ export function FormField({
   max,
   step,
   error,
+  multiline = false,
+  rows = 3,
 }: FormFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
   const isPassword = type === "password";
+
+  const fieldClassName = `block w-full rounded-none border bg-surface px-3 py-2 text-ink focus:outline-none ${
+    error ? "border-red-600 focus:border-red-600" : "border-border focus:border-active"
+  } ${suffix || isPassword ? "pr-10" : ""} ${disabled ? "cursor-not-allowed bg-card text-muted" : ""}`;
 
   return (
     <label className="block text-sm">
       <span className="text-muted">{label}</span>
       <div className="relative mt-1">
-        <input
-          type={isPassword && showPassword ? "text" : type}
-          value={value}
-          disabled={disabled}
-          placeholder={placeholder}
-          min={min}
-          max={max}
-          step={step}
-          onChange={(e) => onChange?.(e.target.value)}
-          aria-invalid={error ? true : undefined}
-          className={`block w-full rounded-none border bg-surface px-3 py-2 text-ink focus:outline-none ${
-            error ? "border-red-600 focus:border-red-600" : "border-border focus:border-active"
-          } ${suffix || isPassword ? "pr-10" : ""} ${disabled ? "cursor-not-allowed bg-card text-muted" : ""}`}
-        />
+        {multiline ? (
+          <textarea
+            value={value}
+            disabled={disabled}
+            placeholder={placeholder}
+            rows={rows}
+            onChange={(e) => onChange?.(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            className={fieldClassName}
+          />
+        ) : (
+          <input
+            type={isPassword && showPassword ? "text" : type}
+            value={value}
+            disabled={disabled}
+            placeholder={placeholder}
+            min={min}
+            max={max}
+            step={step}
+            onChange={(e) => onChange?.(e.target.value)}
+            aria-invalid={error ? true : undefined}
+            className={fieldClassName}
+          />
+        )}
         {isPassword ? (
           <button
             type="button"

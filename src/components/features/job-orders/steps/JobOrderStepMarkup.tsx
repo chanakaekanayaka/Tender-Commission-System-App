@@ -65,12 +65,13 @@ export function JobOrderStepMarkup() {
             }
           >
             <AmountPercentInput
-              base={profitBase}
+              base={newTotal}
               value={commissionValue}
               percent={commissionPercent}
               onValueChange={setCommissionValue}
               onPercentChange={setCommissionPercent}
               disabled={commissionDisabled}
+              baseLabelKey="jobOrderCreate.basedOnNewTotal"
             />
             {!isAdmin && isLoss && (
               <p className="mt-1 text-xs text-red-600">{t("jobOrderCreate.commissionDisabledOnLoss")}</p>

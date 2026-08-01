@@ -30,7 +30,7 @@ export function JobOrderHistoryTable({ data }: JobOrderHistoryTableProps) {
       formatLKR(row.originalTotal),
       formatLKR(row.finalValue),
       formatLKR(row.profit),
-      t("status.completed"),
+      t(row.isDeleted ? "status.deleted" : "status.completed"),
     ]
       .join(" ")
       .toLowerCase();
@@ -86,7 +86,12 @@ export function JobOrderHistoryTable({ data }: JobOrderHistoryTableProps) {
           {
             id: "status",
             header: t("common.status"),
-            cell: () => <StatusBadge label={t("status.completed")} tone="green" />,
+            cell: (row) =>
+              row.isDeleted ? (
+                <StatusBadge label={t("status.deleted")} tone="red" />
+              ) : (
+                <StatusBadge label={t("status.completed")} tone="green" />
+              ),
           },
         ]}
         data={filtered}

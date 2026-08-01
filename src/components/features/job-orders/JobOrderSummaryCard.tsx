@@ -97,12 +97,12 @@ export function JobOrderSummaryCard({
         </div>
         <SummaryRow
           label={t("jobOrderCreate.salesCommission")}
-          value={`- ${formatLKR(Math.round(commissionValue))}`}
+          value={formatLKR(Math.round(commissionValue))}
           flash={commissionFlash}
         />
         <SummaryRow
           label={t("jobOrderCreate.otherExpensesHeading")}
-          value={`- ${formatLKR(Math.round(otherExpensesTotal))}`}
+          value={formatLKR(Math.round(otherExpensesTotal))}
           flash={otherExpensesFlash}
         />
       </dl>
