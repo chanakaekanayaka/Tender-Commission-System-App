@@ -12,7 +12,9 @@ export default async function StaffGenerateInvoicePage() {
   await connectDB();
 
   // Same real gates as Job Order Commissions Pending and Other Expenses Pending — minus anything
-  // already bundled into another outstanding invoice (invoiceId: null).
+  // already bundled into another outstanding invoice (invoiceId: null), and minus anything Admin's
+  // already mid-way through paying individually (commissionPaidAt/paymentProof set) — only
+  // genuinely untouched ones are invoice-able.
   const [jobOrders, expenseRecords] = await Promise.all([
     JobOrderModel.find({
       billVerifiedAt: { $ne: null },
@@ -23,6 +25,7 @@ export default async function StaffGenerateInvoicePage() {
     }).sort({ billVerifiedAt: -1 }),
     OtherExpenseModel.find({
       status: "Pending",
+      paymentProof: null,
       invoiceId: null,
       ...(user ? { createdBy: user._id } : {}),
     }).sort({ createdAt: -1 }),

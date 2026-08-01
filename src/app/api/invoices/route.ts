@@ -13,7 +13,9 @@ import { apiError, apiSuccess } from "@/lib/api/response";
  *  request. Every figure here is recomputed from the stored records, never trusted from the
  *  request body — only the chosen ids are read from it. Claims each bundled commission/expense
  *  (sets invoiceId) so it can't be double-invoiced or resolved individually elsewhere while this
- *  invoice is outstanding. */
+ *  invoice is outstanding. Expenses already mid-way through the standalone approve flow
+ *  (paymentProof set, but status still "Pending" until Staff confirms it) are excluded too — Admin
+ *  is already paying that one individually, so it can't also be bundled here. */
 export async function POST(request: NextRequest) {
   const { payload, error } = requireAuth(request);
   if (error) return error;
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
       _id: { $in: expenseIds },
       createdBy: payload.userId,
       status: "Pending",
+      paymentProof: null,
       invoiceId: null,
     });
     if (expenses.length !== expenseIds.length) {

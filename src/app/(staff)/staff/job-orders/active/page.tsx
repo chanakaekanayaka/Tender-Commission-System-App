@@ -13,9 +13,11 @@ export default async function StaffActiveJobOrdersPage() {
   await connectDB();
   // Staff sees their own records plus any Admin created and assigned to them
   // (AI_INSTRUCTIONS.md §3). Only bill-verified rows leave for Job Order Pending — see verify-bill.
+  // Deleted rows leave straight to History instead — see the delete route.
   const [records, systemConfig] = await Promise.all([
     JobOrderModel.find({
       billVerifiedAt: null,
+      deletedAt: null,
       ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
     }).sort({ createdAt: -1 }),
     getOrCreateSystemConfig(),

@@ -96,10 +96,20 @@ export interface JobOrderDocument extends Document {
    *  the proof being verified, is what moves a row out of Job Order Pending and into History. */
   paymentVerifiedAt: Date | null;
   /** Set by PATCH /api/job-orders/[id]/pay-commission — Admin paying Staff their commission for
-   *  this job order. Deliberately independent of `paymentVerifiedAt`: Staff can be paid their
-   *  commission before the procuring entity has paid the company. Drives Commissions
-   *  Pending/History for both roles. */
+   *  this job order, alongside uploading `commissionPaymentProof`. Deliberately independent of
+   *  `paymentVerifiedAt`: Staff can be paid their commission before the procuring entity has paid
+   *  the company. This is a checkpoint, not the final word — see `commissionPaymentConfirmedAt`,
+   *  which is what actually drives Commissions Pending/History for both roles. */
   commissionPaidAt: Date | null;
+  /** Set alongside commissionPaidAt — Admin's evidence (bank slip, cheque copy, etc.) that they
+   *  actually paid Staff, same shape/purpose as `paymentProof` but for the commission payout
+   *  instead of the procuring entity's payment. Null until Admin pays. */
+  commissionPaymentProof: JobOrderPaymentProofSubdoc | null;
+  /** Set by PATCH /api/job-orders/[id]/confirm-commission-payment — Staff confirming they've
+   *  reviewed Admin's uploaded commissionPaymentProof and it looks legitimate. This, not merely
+   *  commissionPaidAt being set, is what moves the row out of Commissions Pending and into
+   *  Commissions History for both roles. Null until Staff confirms. */
+  commissionPaymentConfirmedAt: Date | null;
   /** Set by PATCH /api/job-orders/[id]/reject-commission — Admin declining to pay out this job
    *  order's commission (e.g. a dispute). Removes it from Commissions Pending without adding it to
    *  History, since nothing was actually paid. */
@@ -113,6 +123,11 @@ export interface JobOrderDocument extends Document {
    *  copy, etc.) once the procuring entity actually pays, so Admin has something to check before
    *  verifying it. Null until uploaded; uploading again replaces it. */
   paymentProof: JobOrderPaymentProofSubdoc | null;
+  /** Set by PATCH /api/job-orders/[id]/delete — Admin discarding a job order from Job Order Active
+   *  (a soft delete: the record itself is kept for audit purposes). This, not a real Mongo delete,
+   *  is what removes a row from Active for both roles; it then surfaces in both roles' History,
+   *  marked "Deleted", alongside the normal paymentVerifiedAt-completed rows. Null until deleted. */
+  deletedAt: Date | null;
   expensesZeroed: boolean;
   markupValue: number;
   commissionValue: number;
@@ -211,9 +226,12 @@ const jobOrderSchema = new Schema<JobOrderDocument>(
     paymentProofVerifiedAt: { type: Date, default: null },
     paymentVerifiedAt: { type: Date, default: null },
     commissionPaidAt: { type: Date, default: null },
+    commissionPaymentProof: { type: paymentProofSchema, default: null },
+    commissionPaymentConfirmedAt: { type: Date, default: null },
     commissionRejectedAt: { type: Date, default: null },
     invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice", default: null },
     paymentProof: { type: paymentProofSchema, default: null },
+    deletedAt: { type: Date, default: null },
     expensesZeroed: { type: Boolean, default: false },
     markupValue: { type: Number, required: true, min: 0 },
     commissionValue: { type: Number, required: true, min: 0 },

@@ -43,6 +43,7 @@ export function JobOrderMetadataForm({ metadata, onChange }: JobOrderMetadataFor
           label={t("jobOrderCreate.note")}
           value={metadata.note}
           onChange={(value) => onChange("note", value)}
+          multiline
         />
       </div>
     </Card>

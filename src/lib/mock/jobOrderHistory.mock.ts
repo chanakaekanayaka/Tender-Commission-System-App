@@ -10,6 +10,7 @@ export const jobOrderHistory: JobOrderHistoryRecord[] = [
     originalTotal: 1_245_000,
     finalValue: 1_198_500,
     profit: 86_250,
+    isDeleted: false,
   },
   {
     id: "2",
@@ -19,6 +20,7 @@ export const jobOrderHistory: JobOrderHistoryRecord[] = [
     originalTotal: 3_860_500,
     finalValue: 3_720_000,
     profit: 214_600,
+    isDeleted: false,
   },
   {
     id: "3",
@@ -28,6 +30,7 @@ export const jobOrderHistory: JobOrderHistoryRecord[] = [
     originalTotal: 2_140_000,
     finalValue: 2_050_000,
     profit: -32_400,
+    isDeleted: false,
   },
   {
     id: "4",
@@ -37,6 +40,7 @@ export const jobOrderHistory: JobOrderHistoryRecord[] = [
     originalTotal: 560_750,
     finalValue: 560_750,
     profit: 41_200,
+    isDeleted: false,
   },
   {
     id: "5",
@@ -46,5 +50,6 @@ export const jobOrderHistory: JobOrderHistoryRecord[] = [
     originalTotal: 4_320_900,
     finalValue: 4_120_000,
     profit: 305_800,
+    isDeleted: false,
   },
 ];

@@ -15,11 +15,13 @@ interface AdminExpenseHistoryProps {
 }
 
 /** Admin's Other Expenses history — every Staff-submitted expense already reviewed (Approved or
- *  Rejected), searchable by staff name or description. */
+ *  Rejected), searchable by staff name or description. Approved rows also carry the payment
+ *  receipt Admin uploaded and Staff confirmed, so it stays reviewable after the fact. */
 export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [paymentPreviewId, setPaymentPreviewId] = useState<string | null>(null);
 
   const filtered = data.filter((row) => {
     const q = query.trim().toLowerCase();
@@ -27,6 +29,7 @@ export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
     return [row.staffName, row.description].join(" ").toLowerCase().includes(q);
   });
   const previewRow = data.find((row) => row.id === previewId) ?? null;
+  const paymentPreviewRow = data.find((row) => row.id === paymentPreviewId) ?? null;
 
   return (
     <div>
@@ -47,6 +50,21 @@ export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
               <JobOrderDocumentCell documentName={row.receiptFileName} onPreview={() => setPreviewId(row.id)} />
             ),
           },
+          {
+            id: "paymentReceipt",
+            header: t("otherExpenses.paymentReceipt"),
+            cell: (row) =>
+              row.paymentProofFileName ? (
+                <JobOrderDocumentCell
+                  documentName={row.paymentProofFileName}
+                  onPreview={() => setPaymentPreviewId(row.id)}
+                />
+              ) : (
+                <span className="text-xs text-muted">—</span>
+              ),
+          },
+          { id: "paymentUploadedAt", header: t("otherExpenses.uploadTime"), cell: (row) => row.paymentUploadedAt ?? "—" },
+          { id: "invoiceNo", header: t("invoices.invoiceNo"), cell: (row) => row.invoiceNo ?? "—" },
           {
             id: "status",
             header: t("common.status"),
@@ -70,6 +88,14 @@ export function AdminExpenseHistory({ data }: AdminExpenseHistoryProps) {
         fileName={previewRow?.receiptFileName}
         fileType={previewRow?.receiptFileType}
         url={previewRow?.receiptUrl}
+      />
+
+      <DocumentPreviewModal
+        open={paymentPreviewRow !== null}
+        onClose={() => setPaymentPreviewId(null)}
+        fileName={paymentPreviewRow?.paymentProofFileName}
+        fileType={paymentPreviewRow?.paymentProofFileType}
+        url={paymentPreviewRow?.paymentProofUrl}
       />
     </div>
   );

@@ -15,9 +15,10 @@ import type { AdminActiveJobOrder } from "@/shared/types/job-order.types";
 
 export default async function AdminActiveJobOrdersPage() {
   await connectDB();
-  // Only bill-verified rows leave for Job Order Pending — see verify-bill.
+  // Only bill-verified rows leave for Job Order Pending — see verify-bill. Deleted rows leave
+  // straight to History instead — see the delete route.
   const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billVerifiedAt: null }).sort({ createdAt: -1 }),
+    JobOrderModel.find({ billVerifiedAt: null, deletedAt: null }).sort({ createdAt: -1 }),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
