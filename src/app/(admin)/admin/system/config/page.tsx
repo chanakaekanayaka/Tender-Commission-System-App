@@ -2,6 +2,7 @@ import { T } from "@/components/features/i18n/T";
 import { SystemConfig } from "@/components/features/system-config/SystemConfig";
 import connectDB from "@/lib/db/connectDB";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
+import { getSignedImageUrl } from "@/lib/aws/s3";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 
 export default async function AdminSystemConfigPage() {
@@ -22,6 +23,9 @@ export default async function AdminSystemConfigPage() {
           isVatRegistered: config.isVatRegistered,
           vatPercentage: config.vatPercentage,
           paymentDueDays: config.paymentDueDays,
+          themeColor: config.themeColor,
+          logoFileName: config.logo?.fileName,
+          logoUrl: config.logo ? await getSignedImageUrl(config.logo.s3Key) : undefined,
         }}
       />
     </div>

@@ -1,5 +1,6 @@
 import { LogoutButton } from "@/components/features/auth/LogoutButton";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { SidebarBrand } from "@/components/layout/SidebarBrand";
 import { SidebarGroup } from "@/components/layout/SidebarGroup";
 import { SidebarItem } from "@/components/layout/SidebarItem";
 import type { TranslationKey } from "@/lib/i18n/locales";
@@ -81,9 +82,7 @@ export function StaffSidebar({ className = "" }: StaffSidebarProps) {
   return (
     <div className={`flex h-full flex-col bg-sidebar text-sidebar-ink ${className}`}>
       <div className="p-4">
-        <div className="rounded-none border border-white/10 py-2 text-center text-sm font-bold tracking-wide">
-          TENDER-CMS
-        </div>
+        <SidebarBrand />
       </div>
 
       <nav className="hide-scrollbar flex-1 space-y-1 overflow-y-auto px-3 pb-4 text-sm">
