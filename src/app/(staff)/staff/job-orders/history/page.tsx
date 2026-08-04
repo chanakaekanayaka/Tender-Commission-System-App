@@ -6,9 +6,18 @@ import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
-export default async function StaffJobOrderHistoryPage() {
+interface StaffJobOrderHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function StaffJobOrderHistoryPage({ searchParams }: StaffJobOrderHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees their own records plus any Admin created and assigned to them
@@ -17,13 +26,19 @@ export default async function StaffJobOrderHistoryPage() {
   // Pending/History still waits for the separate "Payment Complete" confirmation (paymentVerifiedAt
   // is only ever set once paymentProofVerifiedAt already is, so this gate covers both). A deleted
   // job order (see the delete route) also lands here, marked "Deleted" instead of "Completed".
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({
-      $and: [
-        { $or: [{ paymentProofVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] },
-        ...(user ? [{ $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] }] : []),
-      ],
-    }).sort({ paymentProofVerifiedAt: -1 }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      {
+        $and: [
+          { $or: [{ paymentProofVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] },
+          ...(user ? [{ $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] }] : []),
+        ],
+      },
+      ["jobOrderNo", "procurementNo"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+      { paymentProofVerifiedAt: -1 },
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -56,7 +71,7 @@ export default async function StaffJobOrderHistoryPage() {
         </h1>
       </div>
 
-      <JobOrderHistoryTable data={data} />
+      <JobOrderHistoryTable data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

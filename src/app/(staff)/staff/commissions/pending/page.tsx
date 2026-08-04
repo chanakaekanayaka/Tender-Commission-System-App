@@ -8,24 +8,39 @@ import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateTime } from "@/lib/utils/date";
 import { getNewTotal, getProfitBase } from "@/lib/utils/jobOrderExpenses";
 import { percentFromValue } from "@/lib/utils/pricing";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { StaffPendingCommission } from "@/shared/types/commission.types";
 
-export default async function CommissionPendingPage() {
+interface CommissionPendingPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function CommissionPendingPage({ searchParams }: CommissionPendingPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Same gate as Admin's own Commissions
   // Pending, covering both stages so Staff can see the full lifecycle, not just the final step: bill
   // and payment proof verified, commission not yet confirmed or rejected, independent of whether the
   // procuring entity's payment has been marked fully complete yet.
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({
-      billVerifiedAt: { $ne: null },
-      paymentProofVerifiedAt: { $ne: null },
-      commissionPaymentConfirmedAt: null,
-      commissionRejectedAt: null,
-      invoiceId: null,
-      ...(user ? { createdBy: user._id } : {}),
-    }).sort({ billVerifiedAt: -1 }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      {
+        billVerifiedAt: { $ne: null },
+        paymentProofVerifiedAt: { $ne: null },
+        commissionPaymentConfirmedAt: null,
+        commissionRejectedAt: null,
+        invoiceId: null,
+        ...(user ? { createdBy: user._id } : {}),
+      },
+      ["jobOrderNo"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+      { billVerifiedAt: -1 },
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -59,7 +74,13 @@ export default async function CommissionPendingPage() {
         <T k="commissions.pendingHeading" />
       </h1>
 
-      <StaffPendingCommissions data={data} />
+      <StaffPendingCommissions
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

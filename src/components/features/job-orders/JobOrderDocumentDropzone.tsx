@@ -36,6 +36,11 @@ export function JobOrderDocumentDropzone({
 
   const hasFile = Boolean(fileName);
   const canBrowse = !hasFile && !isUploading;
+  // Scan just looks up canned mock metadata by procurement no for now (no real Textract wired up
+  // yet — see JobOrderWizardContext's handleParse) but it should still only ever run against a
+  // document that's actually finished uploading, not be usable for the "type everything by hand,
+  // never pick a file" path.
+  const canParse = hasFile && !isUploading && !uploadError;
 
   const handleFile = (file: File | undefined) => {
     if (!file) return;
@@ -135,7 +140,7 @@ export function JobOrderDocumentDropzone({
         <button
           type="button"
           onClick={onParse}
-          disabled={isParsing}
+          disabled={isParsing || !canParse}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-none bg-active px-4 py-2 text-sm font-medium text-active-ink hover:bg-active/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isParsing ? (

@@ -6,16 +6,31 @@ import { OtherExpenseModel } from "@/lib/db/models/OtherExpense.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateOnly, formatDateTime } from "@/lib/utils/date";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { StaffExpenseHistoryRecord } from "@/shared/types/other-expense.types";
 
-export default async function StaffExpenseHistoryPage() {
+interface StaffExpenseHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function StaffExpenseHistoryPage({ searchParams }: StaffExpenseHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
-  const records = await OtherExpenseModel.find({
-    status: { $ne: "Pending" },
-    ...(user ? { createdBy: user._id } : {}),
-  }).sort({ reviewedAt: -1 });
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    OtherExpenseModel,
+    {
+      status: { $ne: "Pending" },
+      ...(user ? { createdBy: user._id } : {}),
+    },
+    ["description"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { reviewedAt: -1 },
+  );
 
   const invoiceIds = [...new Set(records.filter((record) => record.invoiceId).map((record) => record.invoiceId!.toString()))];
   const invoices = await InvoiceModel.find({ _id: { $in: invoiceIds } });
@@ -47,7 +62,13 @@ export default async function StaffExpenseHistoryPage() {
         <T k="otherExpenses.historyHeading" />
       </h1>
 
-      <StaffExpenseHistoryTable data={data} />
+      <StaffExpenseHistoryTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

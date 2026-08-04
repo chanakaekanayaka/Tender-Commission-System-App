@@ -5,14 +5,27 @@ import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 
-export default async function AdminPendingJobOrdersPage() {
+interface AdminPendingJobOrdersPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminPendingJobOrdersPage({ searchParams }: AdminPendingJobOrdersPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billVerifiedAt: { $ne: null }, paymentVerifiedAt: null }).sort({
-      "billDocument.generatedAt": -1,
-    }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      { billVerifiedAt: { $ne: null }, paymentVerifiedAt: null },
+      ["jobOrderNo", "procurementNo"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+      { "billDocument.generatedAt": -1 },
+    ),
     getOrCreateSystemConfig(),
   ]);
 
@@ -42,7 +55,14 @@ export default async function AdminPendingJobOrdersPage() {
         </h1>
       </div>
 
-      <AdminPendingTable initialData={data} paymentDueDays={systemConfig.paymentDueDays} />
+      <AdminPendingTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+        paymentDueDays={systemConfig.paymentDueDays}
+      />
     </div>
   );
 }

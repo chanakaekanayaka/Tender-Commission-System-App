@@ -1,5 +1,6 @@
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { ItemModel, type ItemDocument, type ItemSpecSubdoc } from "@/lib/db/models/Item.model";
+import { paginateFind, type PaginationParams } from "@/lib/db/pagination";
 import type { CatalogItem } from "@/shared/types/item.types";
 
 const MAX_CODE_ATTEMPTS = 5;
@@ -92,22 +93,43 @@ export async function createItem(rawName: string): Promise<ItemDocument> {
   return insertItem(name, nameKey);
 }
 
-/** Shared by every Items page (Catalog, Create Specs Doc — admin and staff): loads the catalog
- *  and resolves each item's image to a short-lived signed URL (the bucket is private). */
+function toCatalogItem(item: ItemDocument, imageUrl: string): CatalogItem {
+  return {
+    id: item._id.toString(),
+    code: item.code,
+    name: item.name,
+    imageUrl,
+    specs: item.specs.map((spec: ItemSpecSubdoc, index: number) => ({
+      id: `${item._id.toString()}-${index}`,
+      label: spec.label,
+      value: spec.value,
+    })),
+  };
+}
+
+/** Shared by Create Specs Doc (admin and staff): that page is a full-catalog *selector*, not a
+ *  browsable list — like StaffInvoiceModule, it's excluded from backend pagination on purpose, so
+ *  this loads and resolves every item's signed image URL same as before. For the browsable Catalog
+ *  page itself, see `listCatalogItems` below instead. */
 export async function getCatalogItems(): Promise<CatalogItem[]> {
   const items = await ItemModel.find().sort({ code: 1 });
+  return Promise.all(items.map(async (item) => toCatalogItem(item, item.imageKey ? await getSignedImageUrl(item.imageKey) : "")));
+}
 
-  return Promise.all(
-    items.map(async (item) => ({
-      id: item._id.toString(),
-      code: item.code,
-      name: item.name,
-      imageUrl: item.imageKey ? await getSignedImageUrl(item.imageKey) : "",
-      specs: item.specs.map((spec: ItemSpecSubdoc, index: number) => ({
-        id: `${item._id.toString()}-${index}`,
-        label: spec.label,
-        value: spec.value,
-      })),
-    })),
+export interface CatalogItemsPage {
+  items: CatalogItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+/** Backend-paginated variant for the Catalog page's own grid — unlike `getCatalogItems()`, this
+ *  only resolves a signed image URL for the current page's items, not the whole collection, which
+ *  is the main cost of this query as the catalog grows. */
+export async function listCatalogItems(params: PaginationParams): Promise<CatalogItemsPage> {
+  const { rows, total, page, totalPages } = await paginateFind(ItemModel, {}, ["name", "code"], params, { code: 1 });
+  const items = await Promise.all(
+    rows.map(async (item) => toCatalogItem(item, item.imageKey ? await getSignedImageUrl(item.imageKey) : "")),
   );
+  return { items, total, page, totalPages };
 }

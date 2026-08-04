@@ -1,18 +1,24 @@
 "use client";
 
 import { ImageOff, ImagePlus, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useRouter } from "next/navigation";
 import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatAmount } from "@/lib/utils/currency";
 import type { CatalogItem, ItemSpec } from "@/shared/types/item.types";
 
 interface ItemCatalogFormProps {
-  initialItems: CatalogItem[];
+  data: CatalogItem[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 interface UsageRow {
@@ -23,14 +29,17 @@ interface UsageRow {
   unitPrice: number;
 }
 
+// Matches the grid's responsive column counts (2/3/4/5) — keep in sync with the Catalog pages'
+// own PAGE_SIZE, which is what actually drives the server-side limit.
 const PAGE_SIZE = 12;
 
 /** Client Component — Items are populated automatically from saved Price Schedules (see
  *  src/lib/db/items.ts). "Add New Item" lets a new one be created by hand too, but its code is
  *  always auto-assigned (see createItem() in src/lib/db/items.ts) — never user-editable. */
-export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
+export function ItemCatalogForm({ data, search, page, totalPages, total }: ItemCatalogFormProps) {
   const { t } = useTranslation();
-  const [items, setItems] = useState<CatalogItem[]>(initialItems);
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [specs, setSpecs] = useState<ItemSpec[]>([]);
   const [newSpecLabel, setNewSpecLabel] = useState("");
@@ -39,8 +48,6 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -54,21 +61,6 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
     if (!imagePreviewUrl) return;
     return () => URL.revokeObjectURL(imagePreviewUrl);
   }, [imagePreviewUrl]);
-
-  const filteredItems = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((item) => `${item.name} ${item.code}`.toLowerCase().includes(q));
-  }, [items, query]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pageItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
-  const handleQueryChange = (value: string) => {
-    setQuery(value);
-    setPage(1);
-  };
 
   const openEditor = (item: CatalogItem) => {
     setEditingItem(item);
@@ -138,13 +130,7 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
         throw new Error(result.message ?? "Failed to update item.");
       }
 
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === editingItem.id
-            ? { ...item, specs: result.data.specs, imageUrl: result.data.imageUrl ?? item.imageUrl }
-            : item,
-        ),
-      );
+      router.refresh();
       setToast({ message: t("items.updated"), variant: "success" });
       closeEditor();
     } catch (err) {
@@ -177,11 +163,7 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
         throw new Error(result.message ?? "Failed to create item.");
       }
 
-      setItems((prev) =>
-        [...prev, { id: result.data.id, code: result.data.code, name: result.data.name, imageUrl: "", specs: [] }].sort(
-          (a, b) => a.code.localeCompare(b.code),
-        ),
-      );
+      router.refresh();
       setToast({ message: t("items.created"), variant: "success" });
       closeAddModal();
     } catch (err) {
@@ -197,7 +179,7 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">{t("items.existingItems")}</p>
           <div className="flex flex-wrap items-center gap-3">
-            <SearchInput value={query} onChange={handleQueryChange} placeholder={t("items.searchPlaceholder")} />
+            <SearchInput value={searchValue} onChange={setSearch} placeholder={t("items.searchPlaceholder")} />
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
@@ -209,13 +191,13 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
           </div>
         </div>
 
-        {filteredItems.length === 0 ? (
+        {data.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted">
-            {query ? t("items.noResults", { query }) : t("items.noItems")}
+            {searchValue ? t("items.noResults", { query: searchValue }) : t("items.noItems")}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {pageItems.map((item) => (
+            {data.map((item) => (
               <div key={item.id} className="group relative flex flex-col border border-border bg-card">
                 <div className="relative aspect-square w-full border-b border-border bg-surface">
                   {item.imageUrl ? (
@@ -245,7 +227,7 @@ export function ItemCatalogForm({ initialItems }: ItemCatalogFormProps) {
           </div>
         )}
 
-        <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
+        <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={PAGE_SIZE} />
       </div>
 
       <Modal open={isAddModalOpen} onClose={closeAddModal} title={t("items.addNewItem")}>

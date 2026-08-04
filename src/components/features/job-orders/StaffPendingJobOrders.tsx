@@ -1,19 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatCard } from "@/components/ui/StatCard";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import { PaymentProofUploadCell } from "@/components/features/job-orders/PaymentProofUploadCell";
 import type { StaffPendingJobOrder } from "@/shared/types/job-order.types";
 
 interface StaffPendingJobOrdersProps {
-  initialData: StaffPendingJobOrder[];
+  data: StaffPendingJobOrder[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
+  /** Sum of every matching row's amount, not just this page — see the page's own comment. */
+  totalPendingAmount: number;
 }
 
 /**
@@ -22,28 +32,31 @@ interface StaffPendingJobOrdersProps {
  * has real evidence before clicking Verify Payment. Every row here has a real generated bill that
  * hasn't been payment-verified yet; once Admin verifies it, the row simply stops appearing here.
  */
-export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProps) {
+export function StaffPendingJobOrders({
+  data,
+  search,
+  page,
+  totalPages,
+  total,
+  totalPendingAmount,
+}: StaffPendingJobOrdersProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(initialData);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const totalPending = useMemo(() => rows.reduce((sum, row) => sum + row.amount, 0), [rows]);
-
-  const filtered = rows.filter((row) => row.jobOrderNo.toLowerCase().includes(query.trim().toLowerCase()));
-
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
     <div className="space-y-4">
-      <StatCard label={t("staffPendingJobOrders.totalPending")} value={formatLKR(totalPending)} />
+      <StatCard label={t("staffPendingJobOrders.totalPending")} value={formatLKR(totalPendingAmount)} />
 
       <div className="rounded-none border border-border bg-card p-4">
         <div className="mb-4">
           <SearchInput
-            value={query}
-            onChange={setQuery}
+            value={searchValue}
+            onChange={setSearch}
             placeholder={t("staffPendingJobOrders.searchPlaceholder")}
           />
         </div>
@@ -91,27 +104,25 @@ export function StaffPendingJobOrders({ initialData }: StaffPendingJobOrdersProp
                   jobOrderId={row.id}
                   fileName={row.paymentProofName}
                   onPreview={() => setPreviewId(row.id)}
-                  onUploaded={({ fileName, fileType, previewUrl }) => {
-                    setRows((prev) =>
-                      prev.map((r) =>
-                        r.id === row.id
-                          ? { ...r, paymentProofName: fileName, paymentProofType: fileType, paymentProofUrl: previewUrl }
-                          : r,
-                      ),
-                    );
+                  onUploaded={() => {
                     setToast({ message: t("staffPendingJobOrders.proofUploaded"), variant: "success" });
+                    router.refresh();
                   }}
                   onError={(message) => setToast({ message, variant: "error" })}
                 />
               ),
             },
           ]}
-          data={filtered}
+          data={data}
           rowKey={(row) => row.id}
           emptyMessage={
-            query ? t("staffPendingJobOrders.noResults", { query }) : t("staffPendingJobOrders.empty")
+            searchValue
+              ? t("staffPendingJobOrders.noResults", { query: searchValue })
+              : t("staffPendingJobOrders.empty")
           }
         />
+
+        <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
       </div>
 
       <DocumentPreviewModal

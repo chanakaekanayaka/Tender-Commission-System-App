@@ -4,11 +4,29 @@ import connectDB from "@/lib/db/connectDB";
 import { InvoiceModel, type InvoiceLineItemSubdoc } from "@/lib/db/models/Invoice.model";
 import { UserModel } from "@/lib/db/models/User.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { findStaffIdsByName } from "@/lib/db/staffSearch";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { InvoiceLineItem, InvoiceRequest } from "@/shared/types/invoice.types";
 
-export default async function AdminInvoiceHistoryPage() {
+interface AdminInvoiceHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminInvoiceHistoryPage({ searchParams }: AdminInvoiceHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
-  const records = await InvoiceModel.find({ status: "Paid" }).sort({ paidAt: -1 });
+  const staffSearchIds = await findStaffIdsByName(search);
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    InvoiceModel,
+    { status: "Paid" },
+    ["invoiceNo"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { paidAt: -1 },
+    staffSearchIds.length ? [{ createdBy: { $in: staffSearchIds } }] : [],
+  );
 
   const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
   const staffUsers = await UserModel.find({ _id: { $in: staffIds } });
@@ -44,7 +62,13 @@ export default async function AdminInvoiceHistoryPage() {
         <T k="invoices.historyHeadingAdmin" />
       </h1>
 
-      <AdminInvoiceHistoryTable data={data} />
+      <AdminInvoiceHistoryTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

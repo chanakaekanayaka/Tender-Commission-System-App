@@ -1,38 +1,40 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { InvoiceDetailModal } from "@/components/features/invoices/InvoiceDetailModal";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { InvoiceRequest } from "@/shared/types/invoice.types";
 
 interface AdminInvoiceModuleProps {
   data: InvoiceRequest[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /** Admin's Invoice Requests — every Staff-submitted invoice still awaiting payment. Uploading the
  *  payment bill is the one real action: it settles the whole invoice (and cascades to every
  *  commission/expense it bundled) in one step, moving the row into History. */
-export function AdminInvoiceModule({ data }: AdminInvoiceModuleProps) {
+export function AdminInvoiceModule({ data, search, page, totalPages, total }: AdminInvoiceModuleProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(data);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = rows.filter((invoice) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [invoice.invoiceNo, invoice.submittedBy].join(" ").toLowerCase().includes(q);
-  });
-
-  const viewingInvoice = rows.find((invoice) => invoice.id === viewingId) ?? null;
+  const viewingInvoice = data.find((invoice) => invoice.id === viewingId) ?? null;
 
   const handleUploadClick = (id: string) => {
     setUploadingId(id);
@@ -52,7 +54,7 @@ export function AdminInvoiceModule({ data }: AdminInvoiceModuleProps) {
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to mark invoice as paid.");
       }
-      setRows((prev) => prev.filter((invoice) => invoice.id !== id));
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to mark invoice as paid.", variant: "error" });
     } finally {
@@ -63,7 +65,7 @@ export function AdminInvoiceModule({ data }: AdminInvoiceModuleProps) {
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("invoices.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("invoices.searchPlaceholder")} />
       </div>
 
       <input
@@ -109,10 +111,12 @@ export function AdminInvoiceModule({ data }: AdminInvoiceModuleProps) {
             ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("invoices.noRequests")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <InvoiceDetailModal invoice={viewingInvoice} onClose={() => setViewingId(null)} />
 

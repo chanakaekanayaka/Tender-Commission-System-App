@@ -2,17 +2,25 @@
 
 import { Download, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import type { ActiveJobOrder } from "@/shared/types/job-order.types";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 
 interface ActiveJobOrdersTableProps {
-  initialData: ActiveJobOrder[];
+  data: ActiveJobOrder[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /**
@@ -23,20 +31,14 @@ interface ActiveJobOrdersTableProps {
  * the wizard at any step; "Bill" is Staff's one row action here (generate once eligible, then send
  * to Admin for verification — Admin's own Verify action is what finally moves it to Pending).
  */
-export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps) {
+export function ActiveJobOrdersTable({ data, search, page, totalPages, total }: ActiveJobOrdersTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(initialData);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
-
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.jobOrderNo, row.procurementNo, row.procuringEntity].join(" ").toLowerCase().includes(q);
-  });
 
   // Generates a real PDF bill, uploads it to S3, and records it on the Job Order.
   const handleGenerateBill = async (row: ActiveJobOrder) => {
@@ -47,18 +49,7 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to generate bill.");
       }
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === row.id
-            ? {
-                ...r,
-                documentName: result.data.fileName,
-                documentUrl: result.data.previewUrl,
-                billSubmitted: result.data.billSubmitted,
-              }
-            : r,
-        ),
-      );
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to generate bill.",
@@ -79,7 +70,7 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to send bill to Admin.");
       }
-      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, billSubmitted: true } : r)));
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to send bill to Admin.",
@@ -90,12 +81,12 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
     }
   };
 
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("activeJobOrders.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("activeJobOrders.searchPlaceholder")} />
       </div>
 
       {/* Scrollable on small screens per AI_INSTRUCTIONS.md §C */}
@@ -113,7 +104,7 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row) => (
+            {data.map((row) => (
               <tr key={row.id} className="border-b border-border last:border-b-0">
                 <td className="py-2 pr-3">
                   <Link
@@ -187,16 +178,18 @@ export function ActiveJobOrdersTable({ initialData }: ActiveJobOrdersTableProps)
               </tr>
             ))}
 
-            {filtered.length === 0 && (
+            {data.length === 0 && (
               <tr>
                 <td colSpan={7} className="py-6 text-center text-muted">
-                  {t("activeJobOrders.noResults", { query })}
+                  {t("activeJobOrders.noResults", { query: searchValue })}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <Modal open={previewRow !== null} onClose={() => setPreviewId(null)} title={previewRow?.documentName ?? ""}>
         {previewRow?.documentUrl ? (

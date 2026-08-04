@@ -3,11 +3,29 @@ import { AdminInvoiceModule } from "@/components/features/invoices/AdminInvoiceM
 import connectDB from "@/lib/db/connectDB";
 import { InvoiceModel, type InvoiceLineItemSubdoc } from "@/lib/db/models/Invoice.model";
 import { UserModel } from "@/lib/db/models/User.model";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { findStaffIdsByName } from "@/lib/db/staffSearch";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { InvoiceLineItem, InvoiceRequest } from "@/shared/types/invoice.types";
 
-export default async function AdminInvoiceRequestsPage() {
+interface AdminInvoiceRequestsPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminInvoiceRequestsPage({ searchParams }: AdminInvoiceRequestsPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
-  const records = await InvoiceModel.find({ status: "Pending Review" }).sort({ createdAt: -1 });
+  const staffSearchIds = await findStaffIdsByName(search);
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    InvoiceModel,
+    { status: "Pending Review" },
+    ["invoiceNo"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { createdAt: -1 },
+    staffSearchIds.length ? [{ createdBy: { $in: staffSearchIds } }] : [],
+  );
 
   const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
   const staffUsers = await UserModel.find({ _id: { $in: staffIds } });
@@ -38,7 +56,7 @@ export default async function AdminInvoiceRequestsPage() {
         <T k="invoices.requestsHeading" />
       </h1>
 
-      <AdminInvoiceModule data={data} />
+      <AdminInvoiceModule data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

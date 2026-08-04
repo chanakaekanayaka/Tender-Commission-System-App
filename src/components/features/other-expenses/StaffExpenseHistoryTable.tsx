@@ -2,34 +2,40 @@
 
 import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import type { StaffExpenseHistoryRecord } from "@/shared/types/other-expense.types";
 
 interface StaffExpenseHistoryTableProps {
   data: StaffExpenseHistoryRecord[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /** Staff's own already-reviewed expenses (Approved or Rejected). Approved rows also carry the
  *  payment receipt Admin uploaded and Staff confirmed, so it stays reviewable after the fact. */
-export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps) {
+export function StaffExpenseHistoryTable({ data, search, page, totalPages, total }: StaffExpenseHistoryTableProps) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [paymentPreviewId, setPaymentPreviewId] = useState<string | null>(null);
 
-  const filtered = data.filter((row) => row.description.toLowerCase().includes(query.trim().toLowerCase()));
   const previewRow = data.find((row) => row.id === previewId) ?? null;
   const paymentPreviewRow = data.find((row) => row.id === paymentPreviewId) ?? null;
 
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("otherExpenses.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("otherExpenses.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -71,10 +77,12 @@ export function StaffExpenseHistoryTable({ data }: StaffExpenseHistoryTableProps
           },
           { id: "reviewedDate", header: t("otherExpenses.reviewedDate"), cell: (row) => row.reviewedDate },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("otherExpenses.noResults")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <DocumentPreviewModal
         open={previewRow !== null}

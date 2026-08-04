@@ -6,20 +6,34 @@ import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { ActiveJobOrder } from "@/shared/types/job-order.types";
 
-export default async function StaffActiveJobOrdersPage() {
+interface StaffActiveJobOrdersPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function StaffActiveJobOrdersPage({ searchParams }: StaffActiveJobOrdersPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees their own records plus any Admin created and assigned to them
   // (AI_INSTRUCTIONS.md §3). Only bill-verified rows leave for Job Order Pending — see verify-bill.
   // Deleted rows leave straight to History instead — see the delete route.
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({
-      billVerifiedAt: null,
-      deletedAt: null,
-      ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
-    }).sort({ createdAt: -1 }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      {
+        billVerifiedAt: null,
+        deletedAt: null,
+        ...(user ? { $or: [{ createdBy: user._id }, { assignedStaffId: user._id.toString() }] } : {}),
+      },
+      ["jobOrderNo", "procurementNo", "procuringEntity"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -51,7 +65,7 @@ export default async function StaffActiveJobOrdersPage() {
         </h1>
       </div>
 
-      <ActiveJobOrdersTable initialData={data} />
+      <ActiveJobOrdersTable data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

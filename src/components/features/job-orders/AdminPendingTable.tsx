@@ -1,22 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
 import { calculateDueDate, formatDateISO, isPaymentOverdue } from "@/lib/utils/dueDate";
 import { openPaymentReminderLetter } from "@/lib/utils/paymentReminderLetter";
 import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import { PaymentReminderEmailModal } from "@/components/features/job-orders/PaymentReminderEmailModal";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import type { AdminPendingJobOrder } from "@/shared/types/job-order.types";
 
 interface AdminPendingTableProps {
-  initialData: AdminPendingJobOrder[];
+  data: AdminPendingJobOrder[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
   /** Real, from System Config — days after Bill Generated before a row counts as overdue. */
   paymentDueDays: number;
 }
@@ -31,10 +39,10 @@ interface AdminPendingTableProps {
  * one still-mock piece (System Config doesn't store those for real yet) — purely cosmetic, doesn't
  * affect the numbers.
  */
-export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingTableProps) {
+export function AdminPendingTable({ data, search, page, totalPages, total, paymentDueDays }: AdminPendingTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(initialData);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [emailRowId, setEmailRowId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
@@ -45,23 +53,12 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
 
   const dueById = useMemo(() => {
     const map = new Map<string, { dueDate: Date; overdue: boolean }>();
-    for (const row of rows) {
+    for (const row of data) {
       const dueDate = calculateDueDate(row.billGeneratedDate, paymentDueDays);
       map.set(row.id, { dueDate, overdue: isPaymentOverdue(dueDate, today) });
     }
     return map;
-  }, [rows, today, paymentDueDays]);
-
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-
-    const haystack = [row.jobOrderNo, row.procurementNo, formatLKR(row.expensesAmount), row.billGeneratedDate]
-      .join(" ")
-      .toLowerCase();
-
-    return haystack.includes(q);
-  });
+  }, [data, today, paymentDueDays]);
 
   // Checks the proof, but the row stays right here in Pending — only Payment Complete moves it out.
   const handleVerifyProof = async (id: string) => {
@@ -72,7 +69,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to verify payment proof.");
       }
-      setRows((prev) => prev.map((row) => (row.id === id ? { ...row, paymentProofVerified: true } : row)));
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to verify payment proof.",
@@ -93,7 +90,7 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to complete payment.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to complete payment.",
@@ -127,13 +124,13 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
     });
   };
 
-  const emailRow = rows.find((row) => row.id === emailRowId) ?? null;
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
+  const emailRow = data.find((row) => row.id === emailRowId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("jobOrderPending.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("jobOrderPending.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -225,10 +222,12 @@ export function AdminPendingTable({ initialData, paymentDueDays }: AdminPendingT
             },
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
-        emptyMessage={query ? t("jobOrderPending.noResults", { query }) : t("jobOrderPending.empty")}
+        emptyMessage={searchValue ? t("jobOrderPending.noResults", { query: searchValue }) : t("jobOrderPending.empty")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       {emailRow && (
         <PaymentReminderEmailModal

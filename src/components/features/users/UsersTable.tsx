@@ -2,17 +2,25 @@
 
 import { Lock, Unlock } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { UserForm, type UserFormValues } from "@/components/features/users/UserForm";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { User } from "@/shared/types/user.types";
 
 interface UsersTableProps {
-  initialData: User[];
+  data: User[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 function restrictedCount(user: User) {
@@ -20,23 +28,16 @@ function restrictedCount(user: User) {
 }
 
 /** Edit opens the shared UserForm in a Modal, Block/Unblock opens a confirm Modal — both PATCH /api/users/:id and update the row from the server's response on success. */
-export function UsersTable({ initialData }: UsersTableProps) {
+export function UsersTable({ data, search, page, totalPages, total }: UsersTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(initialData);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [statusTargetId, setStatusTargetId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    const haystack = [row.firstName, row.lastName, row.email, row.role].join(" ").toLowerCase();
-    return haystack.includes(q);
-  });
-
-  const editingUser = rows.find((row) => row.id === editingId) ?? null;
-  const statusTargetUser = rows.find((row) => row.id === statusTargetId) ?? null;
+  const editingUser = data.find((row) => row.id === editingId) ?? null;
+  const statusTargetUser = data.find((row) => row.id === statusTargetId) ?? null;
   const nextStatus = statusTargetUser?.status === "Active" ? "Blocked" : "Active";
 
   const handleUpdate = async (values: UserFormValues) => {
@@ -52,7 +53,7 @@ export function UsersTable({ initialData }: UsersTableProps) {
       throw new Error(result.message ?? "Failed to update user.");
     }
 
-    setRows((prev) => prev.map((row) => (row.id === editingId ? result.data : row)));
+    router.refresh();
     setEditingId(null);
   };
 
@@ -70,14 +71,14 @@ export function UsersTable({ initialData }: UsersTableProps) {
       return;
     }
 
-    setRows((prev) => prev.map((row) => (row.id === statusTargetId ? result.data : row)));
+    router.refresh();
     setStatusTargetId(null);
   };
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("usersList.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("usersList.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -144,10 +145,12 @@ export function UsersTable({ initialData }: UsersTableProps) {
             ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
-        emptyMessage={t("usersList.noResults", { query })}
+        emptyMessage={t("usersList.noResults", { query: searchValue })}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <Modal open={editingUser !== null} onClose={() => setEditingId(null)} title={t("userForm.editHeading")}>
         {editingUser && (

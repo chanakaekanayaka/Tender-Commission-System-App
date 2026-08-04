@@ -3,13 +3,33 @@ import { PriceScheduleHistoryTable } from "@/components/features/tenders/PriceSc
 import connectDB from "@/lib/db/connectDB";
 import { PriceScheduleModel } from "@/lib/db/models/PriceSchedule.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
+import { buildSearchFilter, paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
+import { formatDateTime } from "@/lib/utils/date";
 import type { PriceScheduleSummary } from "@/shared/types/tender.types";
 
-export default async function PriceScheduleHistoryPage() {
+const SEARCH_FIELDS = ["procurementNo", "procuringEntity"];
+
+interface PriceScheduleHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function PriceScheduleHistoryPage({ searchParams }: PriceScheduleHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3.
-  const records = await PriceScheduleModel.find(user ? { createdBy: user._id } : {}).sort({ createdAt: -1 });
+  const baseFilter = user ? { createdBy: user._id } : {};
+  const [{ rows: records, total, totalPages, page: currentPage }, allMatching] = await Promise.all([
+    paginateFind(PriceScheduleModel, baseFilter, SEARCH_FIELDS, { search, page, limit: DEFAULT_PAGE_SIZE }, {
+      createdAt: -1,
+    }),
+    // Export needs every matching id, not just this page's — see PriceScheduleHistoryTable's
+    // ExportMenu, which exports "what the user has searched for," not "what's on screen."
+    PriceScheduleModel.find(buildSearchFilter(baseFilter, SEARCH_FIELDS, search)).select("_id"),
+  ]);
 
   const data: PriceScheduleSummary[] = records.map((record) => ({
     id: record._id.toString(),
@@ -17,16 +37,25 @@ export default async function PriceScheduleHistoryPage() {
     procurementTitle: record.procurementTitle,
     entity: record.procuringEntity,
     closingDate: record.closingDate.toISOString().slice(0, 10),
+    uploadedAt: formatDateTime(record.createdAt),
     totalValue: record.totalValue,
     status: record.status,
   }));
+  const allMatchingIds = allMatching.map((record) => record._id.toString());
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-bold text-ink">
         <T k="tenders.historyHeadingStaff" />
       </h1>
-      <PriceScheduleHistoryTable data={data} />
+      <PriceScheduleHistoryTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+        allMatchingIds={allMatchingIds}
+      />
     </div>
   );
 }

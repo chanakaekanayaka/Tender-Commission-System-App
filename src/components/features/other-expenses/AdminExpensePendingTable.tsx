@@ -1,19 +1,26 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
-import { formatDateTime } from "@/lib/utils/date";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import type { AdminExpensePendingRecord } from "@/shared/types/other-expense.types";
 
 interface AdminExpensePendingTableProps {
   data: AdminExpensePendingRecord[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
@@ -26,22 +33,17 @@ const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp
  * there's nothing left for Admin to do until Staff reviews the receipt and confirms it on their own
  * side — that confirmation, not the upload itself, is what actually moves the row to History.
  */
-export function AdminExpensePendingTable({ data }: AdminExpensePendingTableProps) {
+export function AdminExpensePendingTable({ data, search, page, totalPages, total }: AdminExpensePendingTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(data);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [approvingRowId, setApprovingRowId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.staffName, row.description].join(" ").toLowerCase().includes(q);
-  });
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   // Upload is a two-step click: this just opens the file picker for the row in question; the
   // actual PATCH only fires once a receipt is actually chosen (see handleFileChange).
@@ -67,15 +69,7 @@ export function AdminExpensePendingTable({ data }: AdminExpensePendingTableProps
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to approve expense.");
       }
-      // Stays in Pending — it only actually leaves once Staff confirms (see confirm-payment) — so
-      // this updates the row in place (uploaded, awaiting Staff) instead of removing it.
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === rowId
-            ? { ...r, awaitingStaffConfirmation: true, paymentUploadedAt: formatDateTime(new Date(result.data.paymentProof.uploadedAt)) }
-            : r,
-        ),
-      );
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to approve expense.", variant: "error" });
     } finally {
@@ -93,7 +87,7 @@ export function AdminExpensePendingTable({ data }: AdminExpensePendingTableProps
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to reject expense.");
       }
-      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to reject expense.", variant: "error" });
     } finally {
@@ -104,7 +98,7 @@ export function AdminExpensePendingTable({ data }: AdminExpensePendingTableProps
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("otherExpenses.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("otherExpenses.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -159,10 +153,12 @@ export function AdminExpensePendingTable({ data }: AdminExpensePendingTableProps
               ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("otherExpenses.noPending")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <DocumentPreviewModal
         open={previewRow !== null}

@@ -2,17 +2,25 @@
 
 import { Eye, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import type { StaffPendingCommission } from "@/shared/types/commission.types";
 
 interface StaffPendingCommissionsProps {
   data: StaffPendingCommission[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /**
@@ -22,16 +30,15 @@ interface StaffPendingCommissionsProps {
  * confirm-commission-payment), which is what actually moves the row into Commissions History for
  * both roles.
  */
-export function StaffPendingCommissions({ data }: StaffPendingCommissionsProps) {
+export function StaffPendingCommissions({ data, search, page, totalPages, total }: StaffPendingCommissionsProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(data);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const filtered = rows.filter((row) => row.jobOrderNo.toLowerCase().includes(query.trim().toLowerCase()));
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   const handleConfirm = async (id: string) => {
     setConfirmingId(id);
@@ -41,7 +48,7 @@ export function StaffPendingCommissions({ data }: StaffPendingCommissionsProps) 
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to confirm commission payment.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to confirm commission payment.",
@@ -55,7 +62,7 @@ export function StaffPendingCommissions({ data }: StaffPendingCommissionsProps) 
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("commissions.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("commissions.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -120,10 +127,12 @@ export function StaffPendingCommissions({ data }: StaffPendingCommissionsProps) 
               ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("commissions.noPending")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <DocumentPreviewModal
         open={previewRow !== null}
