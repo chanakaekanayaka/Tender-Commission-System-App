@@ -9,6 +9,7 @@ import { requireAuth } from "@/lib/auth/guard";
 import { createPriceScheduleSchema } from "@/lib/validation/price-schedule.schema";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
+import { formatDateTime } from "@/lib/utils/date";
 import type { PriceScheduleSummary } from "@/shared/types/tender.types";
 
 /** Persists a reviewed/corrected Price Schedule. VAT is always computed server-side from the real
@@ -102,6 +103,7 @@ export async function GET(request: NextRequest) {
     procurementTitle: record.procurementTitle,
     entity: record.procuringEntity,
     closingDate: record.closingDate.toISOString().slice(0, 10),
+    uploadedAt: formatDateTime(record.createdAt),
     totalValue: record.totalValue,
     status: record.status,
   }));
