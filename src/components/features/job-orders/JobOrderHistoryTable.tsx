@@ -1,47 +1,34 @@
 "use client";
 
-import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
 interface JobOrderHistoryTableProps {
   data: JobOrderHistoryRecord[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
-/** Job Order — History. Identical for Admin and Staff; only the search box needs client state, so that's the only reason this whole shell is 'use client'. */
-export function JobOrderHistoryTable({ data }: JobOrderHistoryTableProps) {
+/** Job Order — History. Identical for Admin and Staff. Search is matched server-side against
+ *  jobOrderNo/procurementNo (raw fields) — not the formatted currency/translated status text
+ *  a client-side filter could previously match, which real backend search can't cheaply do. */
+export function JobOrderHistoryTable({ data, search, page, totalPages, total }: JobOrderHistoryTableProps) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
-
-  const filtered = data.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-
-    // Searches every visible column — including formatted currency strings —
-    // so the query matches whatever the user actually sees in the table.
-    const haystack = [
-      row.jobOrderNo,
-      row.procurementNo,
-      row.completionDate,
-      formatLKR(row.originalTotal),
-      formatLKR(row.finalValue),
-      formatLKR(row.profit),
-      t(row.isDeleted ? "status.deleted" : "status.completed"),
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return haystack.includes(q);
-  });
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
 
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("jobOrderHistory.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("jobOrderHistory.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -94,10 +81,12 @@ export function JobOrderHistoryTable({ data }: JobOrderHistoryTableProps) {
               ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
-        emptyMessage={t("jobOrderHistory.noResults", { query })}
+        emptyMessage={t("jobOrderHistory.noResults", { query: searchValue })}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
     </div>
   );
 }

@@ -1,16 +1,24 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminPendingCommission } from "@/shared/types/commission.types";
 
 interface AdminPendingCommissionsProps {
   data: AdminPendingCommission[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
@@ -25,10 +33,10 @@ const ALLOWED_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp
  * side — that confirmation, not the upload itself, is what actually moves the row to History.
  * Client-only because of the Upload/Reject + search state, same split as JobOrderHistoryTable.
  */
-export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) {
+export function AdminPendingCommissions({ data, search, page, totalPages, total }: AdminPendingCommissionsProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(data);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [approvingRowId, setApprovingRowId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -58,10 +66,7 @@ export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) 
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to pay commission.");
       }
-      // Stays in Pending — it only actually leaves once Staff confirms (see
-      // confirm-commission-payment) — so this updates the row in place (uploaded, awaiting Staff)
-      // instead of removing it.
-      setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, awaitingStaffConfirmation: true } : r)));
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to pay commission.", variant: "error" });
     } finally {
@@ -79,7 +84,7 @@ export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) 
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to reject commission.");
       }
-      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to reject commission.", variant: "error" });
     } finally {
@@ -87,16 +92,10 @@ export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) 
     }
   };
 
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    return [row.staffName, row.jobOrderNo].join(" ").toLowerCase().includes(q);
-  });
-
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("commissions.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("commissions.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -152,10 +151,12 @@ export function AdminPendingCommissions({ data }: AdminPendingCommissionsProps) 
               ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("commissions.noPending")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <input
         ref={fileInputRef}

@@ -8,21 +8,39 @@ import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateTime } from "@/lib/utils/date";
 import { getProfitBase } from "@/lib/utils/jobOrderExpenses";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { findStaffIdsByName } from "@/lib/db/staffSearch";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminCommissionHistoryRecord } from "@/shared/types/commission.types";
 
-export default async function AdminCommissionHistoryPage() {
+interface AdminCommissionHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminCommissionHistoryPage({ searchParams }: AdminCommissionHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
   // Staff confirming the receipt (not merely Admin paying) is what actually moves a commission into
   // History — see confirm-commission-payment. Bundling into an Invoice and Admin paying that
   // invoice sets these same fields too (see PATCH /api/invoices/[id]/pay), so both paths land here.
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ commissionPaymentConfirmedAt: { $ne: null } }).sort({ commissionPaymentConfirmedAt: -1 }),
+  const staffIds = await findStaffIdsByName(search);
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      { commissionPaymentConfirmedAt: { $ne: null } },
+      ["jobOrderNo"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+      { commissionPaymentConfirmedAt: -1 },
+      staffIds.length ? [{ createdBy: { $in: staffIds } }] : [],
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
 
-  const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
-  const staffUsers = await UserModel.find({ _id: { $in: staffIds } });
+  const rowCreatorIds = [...new Set(records.map((record) => record.createdBy.toString()))];
+  const staffUsers = await UserModel.find({ _id: { $in: rowCreatorIds } });
   const staffNameById = new Map(staffUsers.map((user) => [user._id.toString(), `${user.firstName} ${user.lastName}`]));
 
   const invoiceIds = [...new Set(records.filter((record) => record.invoiceId).map((record) => record.invoiceId!.toString()))];
@@ -50,7 +68,7 @@ export default async function AdminCommissionHistoryPage() {
         <T k="commissions.historyHeading" />
       </h1>
 
-      <AdminCommissionHistory data={data} />
+      <AdminCommissionHistory data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

@@ -21,6 +21,9 @@ export interface PriceScheduleSummary {
   procurementTitle: string;
   entity: string;
   closingDate: string;
+  /** "YYYY-MM-DD HH:MM" in Sri Lanka local time — when the record was actually saved (createdAt),
+   *  not the tender's own closing date. See formatDateTime(). */
+  uploadedAt: string;
   totalValue: number;
   status: PriceScheduleStatus;
 }

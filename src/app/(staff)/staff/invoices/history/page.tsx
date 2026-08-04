@@ -4,14 +4,29 @@ import connectDB from "@/lib/db/connectDB";
 import { InvoiceModel, type InvoiceLineItemSubdoc } from "@/lib/db/models/Invoice.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { InvoiceLineItem, InvoiceRequest } from "@/shared/types/invoice.types";
 
-export default async function StaffInvoiceHistoryPage() {
+interface StaffInvoiceHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function StaffInvoiceHistoryPage({ searchParams }: StaffInvoiceHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Every invoice they've ever
   // submitted, not just resolved ones — this doubles as their full submission history.
-  const records = await InvoiceModel.find(user ? { createdBy: user._id } : {}).sort({ createdAt: -1 });
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    InvoiceModel,
+    user ? { createdBy: user._id } : {},
+    ["invoiceNo"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { createdAt: -1 },
+  );
 
   const data: InvoiceRequest[] = await Promise.all(
     records.map(async (record) => {
@@ -43,7 +58,13 @@ export default async function StaffInvoiceHistoryPage() {
         <T k="invoices.historyHeadingStaff" />
       </h1>
 
-      <StaffInvoiceHistoryTable data={data} />
+      <StaffInvoiceHistoryTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

@@ -6,11 +6,29 @@ import { OtherExpenseModel } from "@/lib/db/models/OtherExpense.model";
 import { UserModel } from "@/lib/db/models/User.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateOnly, formatDateTime } from "@/lib/utils/date";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { findStaffIdsByName } from "@/lib/db/staffSearch";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminExpenseHistoryRecord } from "@/shared/types/other-expense.types";
 
-export default async function AdminExpenseHistoryPage() {
+interface AdminExpenseHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminExpenseHistoryPage({ searchParams }: AdminExpenseHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
-  const records = await OtherExpenseModel.find({ status: { $ne: "Pending" } }).sort({ reviewedAt: -1 });
+  const staffSearchIds = await findStaffIdsByName(search);
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    OtherExpenseModel,
+    { status: { $ne: "Pending" } },
+    ["description"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { reviewedAt: -1 },
+    staffSearchIds.length ? [{ createdBy: { $in: staffSearchIds } }] : [],
+  );
 
   const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
   const staffUsers = await UserModel.find({ _id: { $in: staffIds } });
@@ -47,7 +65,7 @@ export default async function AdminExpenseHistoryPage() {
         <T k="otherExpenses.historyHeading" />
       </h1>
 
-      <AdminExpenseHistory data={data} />
+      <AdminExpenseHistory data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

@@ -11,14 +11,28 @@ import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminActiveJobOrder } from "@/shared/types/job-order.types";
 
-export default async function AdminActiveJobOrdersPage() {
+interface AdminActiveJobOrdersPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminActiveJobOrdersPage({ searchParams }: AdminActiveJobOrdersPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
   // Only bill-verified rows leave for Job Order Pending — see verify-bill. Deleted rows leave
   // straight to History instead — see the delete route.
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ billVerifiedAt: null, deletedAt: null }).sort({ createdAt: -1 }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      { billVerifiedAt: null, deletedAt: null },
+      ["jobOrderNo", "procurementNo", "procuringEntity"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -76,7 +90,7 @@ export default async function AdminActiveJobOrdersPage() {
         </h1>
       </div>
 
-      <AdminActiveTable initialData={data} />
+      <AdminActiveTable data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

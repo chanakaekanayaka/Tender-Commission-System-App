@@ -5,20 +5,35 @@ import { OtherExpenseModel } from "@/lib/db/models/OtherExpense.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateTime } from "@/lib/utils/date";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { StaffExpensePendingRecord } from "@/shared/types/other-expense.types";
 
-export default async function StaffExpensePendingPage() {
+interface StaffExpensePendingPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function StaffExpensePendingPage({ searchParams }: StaffExpensePendingPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Bundled-into-an-invoice ones are
   // excluded — see invoiceId (they're resolved together when that invoice is paid instead). Covers
   // two stages in one table (see StaffExpensePendingRecord's own doc comment): status stays
   // "Pending" through both, since it's Staff's own confirmation that flips it to "Approved".
-  const records = await OtherExpenseModel.find({
-    status: "Pending",
-    invoiceId: null,
-    ...(user ? { createdBy: user._id } : {}),
-  }).sort({ createdAt: -1 });
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    OtherExpenseModel,
+    {
+      status: "Pending",
+      invoiceId: null,
+      ...(user ? { createdBy: user._id } : {}),
+    },
+    ["description"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { createdAt: -1 },
+  );
 
   const data: StaffExpensePendingRecord[] = await Promise.all(
     records.map(async (record) => ({
@@ -42,7 +57,13 @@ export default async function StaffExpensePendingPage() {
         <T k="otherExpenses.pendingHeading" />
       </h1>
 
-      <StaffExpensePendingTable data={data} />
+      <StaffExpensePendingTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

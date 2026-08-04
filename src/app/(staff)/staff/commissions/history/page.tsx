@@ -6,19 +6,34 @@ import { JobOrderModel } from "@/lib/db/models/JobOrder.model";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateTime } from "@/lib/utils/date";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { CommissionHistoryRecord } from "@/shared/types/commission.types";
 
-export default async function CommissionHistoryPage() {
+interface CommissionHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function CommissionHistoryPage({ searchParams }: CommissionHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   const user = await getCurrentUser();
   await connectDB();
   // Staff sees only their own records — AI_INSTRUCTIONS.md §3. Staff confirming the receipt (not
   // merely Admin paying) is what actually moves a commission into History — see
   // confirm-commission-payment. Bundling into an Invoice and Admin paying that invoice sets these
   // same fields too (see PATCH /api/invoices/[id]/pay), so both paths land here.
-  const records = await JobOrderModel.find({
-    commissionPaymentConfirmedAt: { $ne: null },
-    ...(user ? { createdBy: user._id } : {}),
-  }).sort({ commissionPaymentConfirmedAt: -1 });
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    JobOrderModel,
+    {
+      commissionPaymentConfirmedAt: { $ne: null },
+      ...(user ? { createdBy: user._id } : {}),
+    },
+    ["jobOrderNo"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { commissionPaymentConfirmedAt: -1 },
+  );
 
   const invoiceIds = [...new Set(records.filter((record) => record.invoiceId).map((record) => record.invoiceId!.toString()))];
   const invoices = await InvoiceModel.find({ _id: { $in: invoiceIds } });
@@ -43,7 +58,7 @@ export default async function CommissionHistoryPage() {
         <T k="commissions.historyHeading" />
       </h1>
 
-      <StaffCommissionHistory data={data} />
+      <StaffCommissionHistory data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

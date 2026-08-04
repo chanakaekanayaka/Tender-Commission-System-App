@@ -5,17 +5,30 @@ import { JobOrderModel, type JobOrderLineItemSubdoc } from "@/lib/db/models/JobO
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import { getExpensesAmount } from "@/lib/utils/jobOrderExpenses";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { JobOrderHistoryRecord } from "@/shared/types/job-order.types";
 
-export default async function AdminJobOrderHistoryPage() {
+interface AdminJobOrderHistoryPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminJobOrderHistoryPage({ searchParams }: AdminJobOrderHistoryPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
   // A job order is done for good once payment has been marked fully complete — that's the one
   // signal that moves it out of Pending and into History (see complete-payment route). A deleted
   // job order (see the delete route) also lands here, marked "Deleted" instead of "Completed".
-  const [records, systemConfig] = await Promise.all([
-    JobOrderModel.find({ $or: [{ paymentVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] }).sort({
-      paymentVerifiedAt: -1,
-    }),
+  const [{ rows: records, total, totalPages, page: currentPage }, systemConfig] = await Promise.all([
+    paginateFind(
+      JobOrderModel,
+      { $or: [{ paymentVerifiedAt: { $ne: null } }, { deletedAt: { $ne: null } }] },
+      ["jobOrderNo", "procurementNo"],
+      { search, page, limit: DEFAULT_PAGE_SIZE },
+      { paymentVerifiedAt: -1 },
+    ),
     getOrCreateSystemConfig(),
   ]);
   const vatRate = systemConfig.isVatRegistered ? systemConfig.vatPercentage / 100 : 0;
@@ -47,7 +60,7 @@ export default async function AdminJobOrderHistoryPage() {
         </h1>
       </div>
 
-      <JobOrderHistoryTable data={data} />
+      <JobOrderHistoryTable data={data} search={search} page={currentPage} totalPages={totalPages} total={total} />
     </div>
   );
 }

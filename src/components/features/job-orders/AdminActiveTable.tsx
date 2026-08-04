@@ -2,19 +2,27 @@
 
 import { Download, FileText, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import type { AdminActiveJobOrder, JobOrderExpenseBreakdownItem } from "@/shared/types/job-order.types";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 
 interface AdminActiveTableProps {
-  initialData: AdminActiveJobOrder[];
+  data: AdminActiveJobOrder[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /**
@@ -26,10 +34,10 @@ interface AdminActiveTableProps {
  * "Regenerate Bill" lets Admin redo it, and "Verify" (only once Staff has sent it, or immediately
  * for a bill Admin generated themselves) is what actually moves the row into Job Order Pending.
  */
-export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
+export function AdminActiveTable({ data, search, page, totalPages, total }: AdminActiveTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(initialData);
-  const [query, setQuery] = useState("");
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
   const [expensePreview, setExpensePreview] = useState<JobOrderExpenseBreakdownItem | null>(null);
@@ -38,13 +46,6 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
-
-  const filtered = rows.filter((row) => {
-    const q = query.trim().toLowerCase();
-    if (!q) return true;
-    const haystack = [row.jobOrderNo, row.procurementNo, row.procuringEntity].join(" ").toLowerCase();
-    return haystack.includes(q);
-  });
 
   // Generates a real PDF bill, uploads it to S3, and records it on the Job Order.
   const handleGenerateBill = async (id: string) => {
@@ -55,18 +56,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to generate bill.");
       }
-      setRows((prev) =>
-        prev.map((row) =>
-          row.id === id
-            ? {
-                ...row,
-                documentName: result.data.fileName,
-                documentUrl: result.data.previewUrl,
-                billSubmitted: result.data.billSubmitted,
-              }
-            : row,
-        ),
-      );
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to generate bill.",
@@ -78,7 +68,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   };
 
   // Approving the bill moves the row out of Active entirely — Job Order Pending is where it lives
-  // next, so it's simply dropped from local state on success rather than patched in place.
+  // next, so a refresh (not a local splice) is what keeps this page's pagination/total accurate.
   const handleVerify = async (id: string) => {
     setVerifyingId(id);
     try {
@@ -87,7 +77,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to verify bill.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to verify bill.",
@@ -99,7 +89,7 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
   };
 
   // Soft delete — the row leaves Active for good (surfaces in History instead, marked "Deleted"),
-  // so it's dropped from local state on success, same as a successful Verify.
+  // so it's refreshed from the server on success, same as a successful Verify.
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
@@ -108,8 +98,8 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to delete job order.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
       setDeleteConfirmId(null);
+      router.refresh();
     } catch (err) {
       setToast({
         message: err instanceof Error ? err.message : "Failed to delete job order.",
@@ -120,14 +110,14 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
     }
   };
 
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
-  const detailsRow = rows.find((row) => row.id === detailsId) ?? null;
-  const deleteConfirmRow = rows.find((row) => row.id === deleteConfirmId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
+  const detailsRow = data.find((row) => row.id === detailsId) ?? null;
+  const deleteConfirmRow = data.find((row) => row.id === deleteConfirmId) ?? null;
 
   return (
     <div className="rounded-none border border-border bg-card p-4">
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("activeJobOrders.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("activeJobOrders.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -239,10 +229,12 @@ export function AdminActiveTable({ initialData }: AdminActiveTableProps) {
               ),
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
-        emptyMessage={t("activeJobOrders.noResults", { query })}
+        emptyMessage={t("activeJobOrders.noResults", { query: searchValue })}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <Modal open={previewRow !== null} onClose={() => setPreviewId(null)} title={previewRow?.documentName ?? ""}>
         {previewRow?.documentUrl ? (

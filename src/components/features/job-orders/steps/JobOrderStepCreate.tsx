@@ -64,8 +64,12 @@ export function JobOrderStepCreate() {
             onParse={handleParse}
             isParsing={isParsing}
           />
-          {!procurementNo && (
+          {!procurementNo ? (
             <p className="text-xs text-muted">{t("jobOrderCreate.selectProcurementFirst")}</p>
+          ) : (
+            (!sourceDocument || sourceDocument.isUploading || sourceDocument.uploadError) && (
+              <p className="text-xs text-muted">{t("jobOrderCreate.uploadDocumentFirst")}</p>
+            )
           )}
         </div>
 

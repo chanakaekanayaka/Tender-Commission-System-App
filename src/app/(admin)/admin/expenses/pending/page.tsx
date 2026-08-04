@@ -5,14 +5,32 @@ import { OtherExpenseModel } from "@/lib/db/models/OtherExpense.model";
 import { UserModel } from "@/lib/db/models/User.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
 import { formatDateTime } from "@/lib/utils/date";
+import { paginateFind, parsePageParam } from "@/lib/db/pagination";
+import { findStaffIdsByName } from "@/lib/db/staffSearch";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import type { AdminExpensePendingRecord } from "@/shared/types/other-expense.types";
 
-export default async function AdminExpensePendingPage() {
+interface AdminExpensePendingPageProps {
+  searchParams: Promise<{ search?: string; page?: string }>;
+}
+
+export default async function AdminExpensePendingPage({ searchParams }: AdminExpensePendingPageProps) {
+  const { search = "", page: pageParam } = await searchParams;
+  const page = parsePageParam(pageParam);
+
   await connectDB();
   // Covers two stages in one table (see AdminExpensePendingRecord's own doc comment): status stays
   // "Pending" through both, since it's Staff's confirmation (not Admin's upload) that flips it to
   // "Approved" — see confirm-payment.
-  const records = await OtherExpenseModel.find({ status: "Pending", invoiceId: null }).sort({ createdAt: -1 });
+  const staffSearchIds = await findStaffIdsByName(search);
+  const { rows: records, total, totalPages, page: currentPage } = await paginateFind(
+    OtherExpenseModel,
+    { status: "Pending", invoiceId: null },
+    ["description"],
+    { search, page, limit: DEFAULT_PAGE_SIZE },
+    { createdAt: -1 },
+    staffSearchIds.length ? [{ createdBy: { $in: staffSearchIds } }] : [],
+  );
 
   const staffIds = [...new Set(records.map((record) => record.createdBy.toString()))];
   const staffUsers = await UserModel.find({ _id: { $in: staffIds } });
@@ -45,7 +63,13 @@ export default async function AdminExpensePendingPage() {
         <T k="otherExpenses.pendingHeading" />
       </h1>
 
-      <AdminExpensePendingTable data={data} />
+      <AdminExpensePendingTable
+        data={data}
+        search={search}
+        page={currentPage}
+        totalPages={totalPages}
+        total={total}
+      />
     </div>
   );
 }

@@ -3,15 +3,22 @@
 import { Eye, FileText } from "lucide-react";
 import { useState } from "react";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import type { CommissionHistoryRecord } from "@/shared/types/commission.types";
 
 interface StaffCommissionHistoryProps {
   data: CommissionHistoryRecord[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /**
@@ -20,18 +27,17 @@ interface StaffCommissionHistoryProps {
  * just while it was Pending. Client-only because of the search box + receipt preview state, same
  * split as AdminCommissionHistory.
  */
-export function StaffCommissionHistory({ data }: StaffCommissionHistoryProps) {
+export function StaffCommissionHistory({ data, search, page, totalPages, total }: StaffCommissionHistoryProps) {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
 
-  const filtered = data.filter((row) => row.jobOrderNo.toLowerCase().includes(query.trim().toLowerCase()));
   const previewRow = data.find((row) => row.id === previewId) ?? null;
 
   return (
     <div>
       <div className="mb-4">
-        <SearchInput value={query} onChange={setQuery} placeholder={t("commissions.searchPlaceholder")} />
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("commissions.searchPlaceholder")} />
       </div>
 
       <DataTable
@@ -61,10 +67,12 @@ export function StaffCommissionHistory({ data }: StaffCommissionHistoryProps) {
             cell: () => <StatusBadge label={t("commissions.paidStatus")} tone="green" />,
           },
         ]}
-        data={filtered}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("commissions.noHistory")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <DocumentPreviewModal
         open={previewRow !== null}

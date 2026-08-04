@@ -2,17 +2,26 @@
 
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
+import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
+import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
+import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { JobOrderDocumentCell } from "@/components/features/job-orders/JobOrderDocumentCell";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import type { StaffExpensePendingRecord } from "@/shared/types/other-expense.types";
 
 interface StaffExpensePendingTableProps {
   data: StaffExpensePendingRecord[];
+  search: string;
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 /**
@@ -21,16 +30,17 @@ interface StaffExpensePendingTableProps {
  * Staff's one action is reviewing that receipt and confirming (PATCH confirm-payment), which is
  * what actually moves the row into History for both roles.
  */
-export function StaffExpensePendingTable({ data }: StaffExpensePendingTableProps) {
+export function StaffExpensePendingTable({ data, search, page, totalPages, total }: StaffExpensePendingTableProps) {
   const { t } = useTranslation();
-  const [rows, setRows] = useState(data);
+  const router = useRouter();
+  const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [paymentPreviewId, setPaymentPreviewId] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const previewRow = rows.find((row) => row.id === previewId) ?? null;
-  const paymentPreviewRow = rows.find((row) => row.id === paymentPreviewId) ?? null;
+  const previewRow = data.find((row) => row.id === previewId) ?? null;
+  const paymentPreviewRow = data.find((row) => row.id === paymentPreviewId) ?? null;
 
   const handleConfirm = async (id: string) => {
     setConfirmingId(id);
@@ -40,7 +50,7 @@ export function StaffExpensePendingTable({ data }: StaffExpensePendingTableProps
       if (!res.ok || !result.success) {
         throw new Error(result.message ?? "Failed to confirm payment.");
       }
-      setRows((prev) => prev.filter((row) => row.id !== id));
+      router.refresh();
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : "Failed to confirm payment.", variant: "error" });
     } finally {
@@ -50,6 +60,10 @@ export function StaffExpensePendingTable({ data }: StaffExpensePendingTableProps
 
   return (
     <div>
+      <div className="mb-4">
+        <SearchInput value={searchValue} onChange={setSearch} placeholder={t("otherExpenses.searchPlaceholder")} />
+      </div>
+
       <DataTable
         columns={[
           { id: "description", header: t("otherExpenses.description"), cell: (row) => row.description },
@@ -105,10 +119,12 @@ export function StaffExpensePendingTable({ data }: StaffExpensePendingTableProps
               ),
           },
         ]}
-        data={rows}
+        data={data}
         rowKey={(row) => row.id}
         emptyMessage={t("otherExpenses.noPending")}
       />
+
+      <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} total={total} limit={DEFAULT_PAGE_SIZE} />
 
       <DocumentPreviewModal
         open={previewRow !== null}
