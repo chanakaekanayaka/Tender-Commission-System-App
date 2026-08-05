@@ -43,8 +43,14 @@ export default async function StaffDashboardPage() {
     // Admin-assigned job orders Staff didn't personally earn commission on until it's theirs).
     JobOrderModel.find({ createdBy: user._id, commissionPaymentConfirmedAt: { $gte: earliestMonthStart } }),
     // Monthly Target tracks business generated this month, not when it was eventually paid out —
-    // gated on the job order's own createdAt, not commissionPaymentConfirmedAt.
-    JobOrderModel.find({ createdBy: user._id, createdAt: { $gte: thisMonth.start, $lt: thisMonth.end }, deletedAt: null }),
+    // gated on the job order's own createdAt, not commissionPaymentConfirmedAt. Same convention as
+    // Admin's own company-wide Monthly Sales Target (see admin/dashboard/page.tsx's `salesValue`):
+    // counted the moment it's created, not gated on reaching any later stage.
+    JobOrderModel.find({
+      createdBy: user._id,
+      createdAt: { $gte: thisMonth.start, $lt: thisMonth.end },
+      deletedAt: null,
+    }),
     // Same real gate Commissions Pending itself uses.
     JobOrderModel.find({
       createdBy: user._id,
@@ -54,12 +60,14 @@ export default async function StaffDashboardPage() {
       commissionRejectedAt: null,
       invoiceId: null,
     }),
-    // Same real gate Staff's own Job Orders > Pending tab uses — deliberately not Admin's own
-    // (unscoped) Pending gate.
+    // Every job order Staff still has something to do on — i.e. everything that hasn't reached
+    // their own Job Orders > History yet (mirrors that page's own gate, inverted: History is
+    // `paymentProofVerifiedAt set OR deletedAt set`, so "not there yet" is both null). Covers
+    // Active (bill not yet verified) and Pending (bill verified, payment proof not yet verified)
+    // in one query, not just Pending alone.
     JobOrderModel.find({
       ...ownership,
-      billVerifiedAt: { $ne: null },
-      paymentVerifiedAt: null,
+      deletedAt: null,
       paymentProofVerifiedAt: null,
     }).sort({ createdAt: -1 }),
     PriceScheduleModel.find({ createdBy: user._id, status: "Completed", createdAt: { $gte: earliestMonthStart } }),
@@ -69,7 +77,10 @@ export default async function StaffDashboardPage() {
   const sumSubTotals = (rows: JobOrderLineItemSubdoc[]) =>
     rows.reduce((sum, row) => sum + calculateLineItemTotals(row.qty, row.unitPrice, vatRate).subTotal, 0);
 
-  const achievedAmount = createdThisMonthRecords.reduce((sum, record) => sum + record.commissionValue, 0);
+  // Sales value (line items, VAT included) — same metric Admin's company-wide card sums via its
+  // own `salesValue`, not commission (that's a personal earnings figure, not business generated).
+  const salesValue = (record: (typeof createdThisMonthRecords)[number]) => sumSubTotals(record.lineItems);
+  const achievedAmount = createdThisMonthRecords.reduce((sum, record) => sum + salesValue(record), 0);
   const monthlyTargetOrders: MonthlyTargetOrderRow[] = createdThisMonthRecords
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .map((record) => ({
@@ -77,7 +88,7 @@ export default async function StaffDashboardPage() {
       jobOrderNo: record.jobOrderNo,
       procurementNo: record.procurementNo,
       procuringEntity: record.procuringEntity,
-      commissionValue: record.commissionValue,
+      total: salesValue(record),
       createdDate: formatDateOnly(record.createdAt),
     }));
   const pendingCommissionOrders: PendingCommissionRow[] = pendingCommissionRecords.map((record) => ({
