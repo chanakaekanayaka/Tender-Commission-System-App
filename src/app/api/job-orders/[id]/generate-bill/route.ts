@@ -130,7 +130,7 @@ async function buildJobOrderBillPDF(data: BillData): Promise<Buffer> {
   summaryRow("New Total", data.newTotal);
   summaryRow("Markup", data.markupValue);
   summaryRow("Sales Commission", -data.commissionValue);
-  summaryRow("Other Expenses", -data.otherExpensesTotal);
+  summaryRow("Total Cost", -data.otherExpensesTotal);
   doc
     .moveTo(PAGE_MARGIN, doc.y + 4)
     .lineTo(PAGE_MARGIN + CONTENT_WIDTH, doc.y + 4)

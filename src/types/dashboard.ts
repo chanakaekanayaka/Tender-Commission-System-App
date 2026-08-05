@@ -39,13 +39,15 @@ export interface OrderToCompleteRow {
 }
 
 /** A Job Order counted toward "Monthly Target"'s achieved amount — created this calendar month,
- *  regardless of how far its own commission has progressed since. */
+ *  counted immediately (not gated on reaching any later stage), by sales value (line items, VAT
+ *  included) rather than commission — the Staff-scoped equivalent of Admin's own company-wide
+ *  Monthly Sales Target (see MonthlySalesTargetOrderRow). */
 export interface MonthlyTargetOrderRow {
   id: string;
   jobOrderNo: string;
   procurementNo: string;
   procuringEntity: string;
-  commissionValue: number;
+  total: number;
   /** Formatted "YYYY-MM-DD" in Sri Lanka local time — see `formatDateOnly`. */
   createdDate: string;
 }

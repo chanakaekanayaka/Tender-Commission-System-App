@@ -101,7 +101,7 @@ export function JobOrderSummaryCard({
           flash={commissionFlash}
         />
         <SummaryRow
-          label={t("jobOrderCreate.otherExpensesHeading")}
+          label={t("jobOrderCreate.totalCost")}
           value={formatLKR(Math.round(otherExpensesTotal))}
           flash={otherExpensesFlash}
         />

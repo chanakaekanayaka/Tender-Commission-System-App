@@ -93,9 +93,9 @@ export function MonthlyTargetCard({ label, targetAmount, achievedAmount, orders 
             { id: "procurementNo", header: t("common.procurementNo"), cell: (row) => row.procurementNo },
             { id: "procuringEntity", header: t("common.procuringEntity"), cell: (row) => row.procuringEntity },
             {
-              id: "commissionValue",
-              header: t("dashboard.commissionValue"),
-              cell: (row) => formatLKR(row.commissionValue),
+              id: "total",
+              header: t("common.totalValue"),
+              cell: (row) => formatLKR(row.total),
             },
             { id: "createdDate", header: t("common.date"), cell: (row) => row.createdDate },
           ]}
