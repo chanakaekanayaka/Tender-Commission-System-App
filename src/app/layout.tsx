@@ -34,6 +34,10 @@ export default async function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // Sets the real sidebar color inline, server-side, so the very first paint already has it —
+      // ThemeProvider's own sync happens in a useEffect, which only runs after hydration and would
+      // otherwise show globals.css's #111827 fallback for a flash on every load/refresh.
+      style={{ "--bg-sidebar": config.themeColor } as React.CSSProperties}
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider initialColor={config.themeColor}>{children}</ThemeProvider>

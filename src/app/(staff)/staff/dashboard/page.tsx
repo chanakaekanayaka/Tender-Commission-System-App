@@ -160,7 +160,7 @@ export default async function StaffDashboardPage() {
 
       <div className="rounded-none border border-border bg-card p-4">
         <h2 className="font-semibold text-ink">
-          <T k="dashboard.thisMonthBidding" />
+          <T k="dashboard.biddingChartHeading" />
         </h2>
         <div className="mt-4">
           <BiddingTrendChart data={priceScheduleTrend} />

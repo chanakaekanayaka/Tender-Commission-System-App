@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { StaffSidebar } from "@/components/layout/StaffSidebar";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { ProfileButton } from "@/components/layout/ProfileButton";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { getCurrentUser } from "@/lib/auth/currentUser";
 
@@ -20,9 +21,12 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     redirect("/admin/dashboard");
   }
 
+  const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
+
   return (
     <LanguageProvider>
       <DashboardLayout sidebar={<StaffSidebar />}>{children}</DashboardLayout>
+      <ProfileButton href="/staff/profile" initials={initials} />
     </LanguageProvider>
   );
 }
