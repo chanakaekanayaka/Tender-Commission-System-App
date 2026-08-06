@@ -23,6 +23,7 @@ const NAV_GROUPS: SidebarGroupConfig[] = [
     children: [
       { labelKey: "sidebar.create", href: "/staff/tenders/create" },
       { labelKey: "sidebar.history", href: "/staff/tenders/history" },
+      { labelKey: "sidebar.vendorExcelUploads", href: "/staff/tenders/vendor-uploads" },
     ],
   },
   {

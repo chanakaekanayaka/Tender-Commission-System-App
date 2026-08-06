@@ -12,11 +12,3 @@ export interface CatalogItem {
   specs: ItemSpec[];
 }
 
-export interface MarketAnalysisEntry {
-  id: string;
-  itemName: string;
-  ourBiddingPrices: number[];
-  othersLowestPrices: number[];
-  suppliedQty: number;
-  bidQty: number;
-}

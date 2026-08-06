@@ -5,7 +5,6 @@ import { FormField } from "@/components/ui/FormField";
 import { Modal } from "@/components/ui/Modal";
 import { Toast, type ToastState } from "@/components/ui/Toast";
 import { useTranslation } from "@/context/LanguageContext";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { formatLKR } from "@/lib/utils/currency";
 
 interface PaymentReminderEmailModalProps {
@@ -14,6 +13,7 @@ interface PaymentReminderEmailModalProps {
   billAmount: number;
   dueDateLabel: string;
   toEmail: string;
+  companyName: string;
   onClose: () => void;
 }
 
@@ -28,6 +28,7 @@ export function PaymentReminderEmailModal({
   billAmount,
   dueDateLabel,
   toEmail,
+  companyName,
   onClose,
 }: PaymentReminderEmailModalProps) {
   const { t } = useTranslation();
@@ -40,7 +41,7 @@ export function PaymentReminderEmailModal({
       procurementNo,
       billAmount: formatLKR(billAmount),
       dueDate: dueDateLabel,
-      companyName: defaultSystemConfig.companyName,
+      companyName,
     }),
   );
   const [toast, setToast] = useState<ToastState | null>(null);

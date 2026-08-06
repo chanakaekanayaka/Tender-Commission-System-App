@@ -3,7 +3,6 @@ import { SystemConfig } from "@/components/features/system-config/SystemConfig";
 import connectDB from "@/lib/db/connectDB";
 import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { getSignedImageUrl } from "@/lib/aws/s3";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 
 export default async function AdminSystemConfigPage() {
   await connectDB();
@@ -19,7 +18,7 @@ export default async function AdminSystemConfigPage() {
 
       <SystemConfig
         initialValues={{
-          ...defaultSystemConfig,
+          companyName: config.companyName,
           isVatRegistered: config.isVatRegistered,
           vatPercentage: config.vatPercentage,
           paymentDueDays: config.paymentDueDays,

@@ -14,7 +14,6 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getSignedImageUrl, uploadDocumentToS3 } from "@/lib/aws/s3";
 import { calculateLineItemTotals } from "@/lib/utils/pricing";
 import { formatLKR } from "@/lib/utils/currency";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -24,6 +23,7 @@ const PAGE_MARGIN = 50;
 const CONTENT_WIDTH = 495; // A4 (595.28pt) minus left/right margins
 
 interface BillData {
+  companyName: string;
   jobOrderNo: string;
   procurementNo: string;
   procurementTitle: string;
@@ -47,7 +47,7 @@ async function buildJobOrderBillPDF(data: BillData): Promise<Buffer> {
     doc.on("error", reject);
   });
 
-  doc.fontSize(10).font("Helvetica-Bold").fillColor("#111827").text(defaultSystemConfig.companyName.toUpperCase());
+  doc.fontSize(10).font("Helvetica-Bold").fillColor("#111827").text(data.companyName.toUpperCase());
   doc
     .moveTo(PAGE_MARGIN, doc.y + 6)
     .lineTo(PAGE_MARGIN + CONTENT_WIDTH, doc.y + 6)
@@ -189,6 +189,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const profit = jobOrder.markupValue;
 
     const buffer = await buildJobOrderBillPDF({
+      companyName: systemConfig.companyName,
       jobOrderNo: jobOrder.jobOrderNo,
       procurementNo: jobOrder.procurementNo,
       procurementTitle: jobOrder.procurementTitle,
