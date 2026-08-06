@@ -40,6 +40,7 @@ export const en = {
   "dashboard.percentAchieved": "{percent}% achieved",
   "dashboard.priceScheduleTrends": "Price Schedule Trends",
   "dashboard.thisMonthBidding": "This Month Bidding",
+  "dashboard.biddingChartHeading": "Bidding Chart",
   "dashboard.noBidsThisMonth": "No bids submitted this month.",
   "dashboard.thisMonthLabel": "This month",
   "dashboard.noOrdersToComplete": "No orders to complete.",
@@ -557,6 +558,22 @@ export const en = {
   "items.usageEmpty": "Not used in any Price Schedule yet.",
 
   "language.label": "Language",
+
+  // Profile / change password
+  "profile.heading": "Profile",
+  "profile.accountDetailsHeading": "Account Details",
+  "profile.name": "Name",
+  "profile.email": "Email",
+  "profile.changePasswordHeading": "Change Password",
+  "profile.currentPassword": "Current Password",
+  "profile.newPassword": "New Password",
+  "profile.confirmNewPassword": "Confirm New Password",
+  "profile.changePassword": "Change Password",
+  "profile.changingPassword": "Changing…",
+  "profile.passwordChanged": "Password changed successfully.",
+  "profile.currentPasswordRequired": "Current password is required",
+  "profile.newPasswordTooShort": "New password must be at least 8 characters",
+  "profile.passwordsDontMatch": "New password and confirmation don't match",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -596,6 +613,7 @@ export const si: Record<TranslationKey, string> = {
   "dashboard.percentAchieved": "{percent}% සාක්ෂාත් කර ඇත",
   "dashboard.priceScheduleTrends": "මිල උපලේඛන ප්‍රවණතා",
   "dashboard.thisMonthBidding": "මෙම මාසයේ ලංසු",
+  "dashboard.biddingChartHeading": "ලංසු ප්‍රස්ථාරය",
   "dashboard.noBidsThisMonth": "මෙම මාසයේ ලංසු ඉදිරිපත් කර නොමැත.",
   "dashboard.thisMonthLabel": "මෙම මාසය",
   "dashboard.noOrdersToComplete": "සම්පූර්ණ කළ යුතු ඇණවුම් නොමැත.",
@@ -1100,6 +1118,22 @@ export const si: Record<TranslationKey, string> = {
   "items.usageEmpty": "තවම කිසිම මිල ලේඛනයක භාවිත වී නැත.",
 
   "language.label": "භාෂාව",
+
+  // Profile / change password
+  "profile.heading": "පැතිකඩ",
+  "profile.accountDetailsHeading": "ගිණුම් විස්තර",
+  "profile.name": "නම",
+  "profile.email": "විද්‍යුත් තැපෑල",
+  "profile.changePasswordHeading": "මුරපදය වෙනස් කරන්න",
+  "profile.currentPassword": "වත්මන් මුරපදය",
+  "profile.newPassword": "නව මුරපදය",
+  "profile.confirmNewPassword": "නව මුරපදය තහවුරු කරන්න",
+  "profile.changePassword": "මුරපදය වෙනස් කරන්න",
+  "profile.changingPassword": "වෙනස් කරමින්…",
+  "profile.passwordChanged": "මුරපදය සාර්ථකව වෙනස් කරන ලදී.",
+  "profile.currentPasswordRequired": "වත්මන් මුරපදය අවශ්‍යයි",
+  "profile.newPasswordTooShort": "නව මුරපදය අවම වශයෙන් අක්ෂර 8ක් විය යුතුය",
+  "profile.passwordsDontMatch": "නව මුරපදය සහ තහවුරු කිරීම නොගැලපේ",
 };
 
 export const locales = { en, si } as const;

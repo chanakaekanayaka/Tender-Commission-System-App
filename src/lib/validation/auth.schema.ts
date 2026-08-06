@@ -23,6 +23,20 @@ export const registerSchema = z.object({
   permissions: permissionsSchema.optional(),
 });
 
+// Self-service password change (PATCH /api/auth/change-password) — always scoped to the caller's
+// own account via the JWT payload, never a target id, so this is distinct from Admin's
+// PATCH /api/users/:id (which deliberately excludes password).
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "New password must be at least 8 characters"),
+    confirmNewPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    message: "New password and confirmation don't match",
+    path: ["confirmNewPassword"],
+  });
+
 // Every field optional — PATCH /api/users/:id updates only what's provided. Password isn't
 // editable here; that would need its own "reset password" flow with re-hashing.
 export const updateUserSchema = z.object({
@@ -38,4 +52,5 @@ export const updateUserSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
