@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const updateSystemConfigSchema = z.object({
+  companyName: z.string().trim().optional(),
   isVatRegistered: z.boolean().optional(),
   vatPercentage: z.number().min(0).max(100).optional(),
   paymentDueDays: z.number().min(0).optional(),

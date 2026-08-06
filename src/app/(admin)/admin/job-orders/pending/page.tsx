@@ -62,6 +62,7 @@ export default async function AdminPendingJobOrdersPage({ searchParams }: AdminP
         totalPages={totalPages}
         total={total}
         paymentDueDays={systemConfig.paymentDueDays}
+        companyName={systemConfig.companyName}
       />
     </div>
   );

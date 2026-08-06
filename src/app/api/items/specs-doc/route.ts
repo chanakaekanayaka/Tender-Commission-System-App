@@ -3,9 +3,9 @@ import PDFDocument from "pdfkit";
 import connectDB from "@/lib/db/connectDB";
 import { getObjectBuffer } from "@/lib/aws/s3";
 import { ItemModel } from "@/lib/db/models/Item.model";
+import { getOrCreateSystemConfig } from "@/lib/db/models/SystemConfig.model";
 import { requireAuth } from "@/lib/auth/guard";
 import { apiError } from "@/lib/api/response";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { toArrayBuffer } from "@/lib/utils/buffer";
 
 interface SpecsDocItem {
@@ -22,7 +22,7 @@ const IMAGE_BOX_HEIGHT = 240;
 // to a placeholder rather than throwing and failing the whole document.
 const EMBEDDABLE_IMAGE_TYPES = new Set(["image/png", "image/jpeg"]);
 
-async function buildSpecsPDF(items: SpecsDocItem[]): Promise<Buffer> {
+async function buildSpecsPDF(items: SpecsDocItem[], companyName: string): Promise<Buffer> {
   const doc = new PDFDocument({ margin: PAGE_MARGIN, size: "A4" });
   const chunks: Buffer[] = [];
   doc.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -39,7 +39,7 @@ async function buildSpecsPDF(items: SpecsDocItem[]): Promise<Buffer> {
       .fontSize(10)
       .font("Helvetica-Bold")
       .fillColor("#111827")
-      .text(defaultSystemConfig.companyName.toUpperCase());
+      .text(companyName.toUpperCase());
     doc
       .moveTo(PAGE_MARGIN, doc.y + 6)
       .lineTo(PAGE_MARGIN + CONTENT_WIDTH, doc.y + 6)
@@ -125,13 +125,17 @@ export async function POST(request: NextRequest) {
   }
 
   await connectDB();
-  const items = await ItemModel.find({ _id: { $in: ids } }).sort({ code: 1 });
+  const [items, systemConfig] = await Promise.all([
+    ItemModel.find({ _id: { $in: ids } }).sort({ code: 1 }),
+    getOrCreateSystemConfig(),
+  ]);
   if (items.length === 0) {
     return apiError("No matching items found.", 404);
   }
 
   const buffer = await buildSpecsPDF(
     items.map((item) => ({ code: item.code, name: item.name, imageKey: item.imageKey, specs: item.specs })),
+    systemConfig.companyName,
   );
 
   return new Response(toArrayBuffer(buffer), {

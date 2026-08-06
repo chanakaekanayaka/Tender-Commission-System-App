@@ -7,12 +7,12 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Toast, type ToastState } from "@/components/ui/Toast";
+import { useTheme } from "@/context/ThemeProvider";
 import { useTranslation } from "@/context/LanguageContext";
 import { useTableQueryState } from "@/lib/hooks/useTableQueryState";
 import { formatLKR } from "@/lib/utils/currency";
 import { calculateDueDate, formatDateISO, isPaymentOverdue } from "@/lib/utils/dueDate";
 import { openPaymentReminderLetter } from "@/lib/utils/paymentReminderLetter";
-import { defaultSystemConfig } from "@/lib/mock/systemConfig.mock";
 import { DEFAULT_PAGE_SIZE } from "@/lib/utils/pagination";
 import { DocumentPreviewModal } from "@/components/features/job-orders/DocumentPreviewModal";
 import { PaymentReminderEmailModal } from "@/components/features/job-orders/PaymentReminderEmailModal";
@@ -27,6 +27,8 @@ interface AdminPendingTableProps {
   total: number;
   /** Real, from System Config — days after Bill Generated before a row counts as overdue. */
   paymentDueDays: number;
+  /** Real, from System Config — shown on the printed payment reminder letter. */
+  companyName: string;
 }
 
 /**
@@ -35,13 +37,21 @@ interface AdminPendingTableProps {
  * here: "Verify Bill" checks the Staff-uploaded payment proof looks legitimate (row stays put,
  * badge flips to "Verified"), then "Payment Complete" — only enabled once verified — is what
  * actually moves the row into History. "Due Date" and the overdue "Due" badge are derived from the
- * real System Config's paymentDueDays. Company name/accent color on the printed letter stay the
- * one still-mock piece (System Config doesn't store those for real yet) — purely cosmetic, doesn't
- * affect the numbers.
+ * real System Config's paymentDueDays; Company name/accent color on the printed letter are the
+ * real System Config values too (companyName prop, and ThemeProvider's sidebarColor for the accent).
  */
-export function AdminPendingTable({ data, search, page, totalPages, total, paymentDueDays }: AdminPendingTableProps) {
+export function AdminPendingTable({
+  data,
+  search,
+  page,
+  totalPages,
+  total,
+  paymentDueDays,
+  companyName,
+}: AdminPendingTableProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const { sidebarColor } = useTheme();
   const { search: searchValue, page: currentPage, setSearch, setPage } = useTableQueryState({ search, page });
   const [emailRowId, setEmailRowId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -105,8 +115,8 @@ export function AdminPendingTable({ data, search, page, totalPages, total, payme
     const dueDateLabel = formatDateISO(dueById.get(row.id)!.dueDate);
 
     openPaymentReminderLetter({
-      companyName: defaultSystemConfig.companyName,
-      accentColor: defaultSystemConfig.themeColor,
+      companyName,
+      accentColor: sidebarColor,
       jobOrderNo: row.jobOrderNo,
       todayLabel: formatDateISO(today),
       dateFieldLabel: t("jobOrderPending.letterDate"),
@@ -119,7 +129,7 @@ export function AdminPendingTable({ data, search, page, totalPages, total, payme
         procurementNo: row.procurementNo,
         billAmount: formatLKR(row.billAmount),
         dueDate: dueDateLabel,
-        companyName: defaultSystemConfig.companyName,
+        companyName,
       }),
     });
   };
@@ -236,6 +246,7 @@ export function AdminPendingTable({ data, search, page, totalPages, total, payme
           billAmount={emailRow.billAmount}
           dueDateLabel={formatDateISO(dueById.get(emailRow.id)!.dueDate)}
           toEmail={emailRow.entityEmail}
+          companyName={companyName}
           onClose={() => setEmailRowId(null)}
         />
       )}

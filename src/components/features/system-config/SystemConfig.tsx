@@ -17,11 +17,12 @@ interface SystemConfigProps {
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
 
 /**
- * VAT Registered / VAT Percentage / Payment Due Period / Theme Color / Logo are all real, backed
- * by PATCH /api/system-config (and POST /api/system-config/logo for the logo file itself) —
- * Payment Due Period drives Job Order Pending's Due Date, Theme Color and Logo both drive both
- * portals' sidebars (see ThemeProvider and AdminSidebar/StaffSidebar). Company Name is still a
- * mock-saved field — nothing else in the app reads it yet.
+ * Company Name / VAT Registered / VAT Percentage / Payment Due Period / Theme Color / Logo are all
+ * real, backed by PATCH /api/system-config (and POST /api/system-config/logo for the logo file
+ * itself) — Payment Due Period drives Job Order Pending's Due Date, Theme Color and Logo both
+ * drive both portals' sidebars (see ThemeProvider and AdminSidebar/StaffSidebar), and Company Name
+ * identifies "our" vendor block when matching an uploaded vendor comparison Excel (see
+ * VendorExcelUpload) in addition to appearing on generated bills/spec sheets/payment letters.
  */
 export function SystemConfig({ initialValues }: SystemConfigProps) {
   const { t } = useTranslation();
@@ -101,6 +102,7 @@ export function SystemConfig({ initialValues }: SystemConfigProps) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyName: values.companyName,
           isVatRegistered: values.isVatRegistered,
           vatPercentage: values.vatPercentage,
           paymentDueDays: values.paymentDueDays,
